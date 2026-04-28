@@ -80,7 +80,7 @@ species_colors = {'mel': 'cyan', 'yak': 'magenta'}
 #%%
 # Set data paths
 # -------------------------------------------------------------------
-rootdir = '/Volumes/Juliana/2d-projector/example-data' # root directory containing experiment data
+rootdir = '/Volumes/Julie/2d-projector/example-data' # root directory containing experiment data
 experiment = 'two-dots' 
 basedir = os.path.join(rootdir, experiment)  # base directory for 
 acquisition_parentdir = os.path.join(basedir, 'videos')
