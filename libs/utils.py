@@ -1229,21 +1229,6 @@ def get_bout_durs(df, bout_varname='boutnum', return_as_df=False,
 # ---------------------------------------------------------------------
 # FlyTracker functions
 # ---------------------------------------------------------------------
-
-def add_frame_nums(trackdf, fps=None):
-    '''Add frame index and sec to dataframes
-    '''
-    frame_ixs = trackdf[trackdf['id']==0].index.tolist()
-    trackdf['frame'] = np.nan
-    for i, g in trackdf.groupby('id'):
-        trackdf.loc[g.index, 'frame'] = frame_ixs
-    trackdf['frame'] = trackdf['frame'].astype(int)
-
-    if fps is not None:
-        trackdf['sec'] = trackdf['frame'] / float(fps)
-    
-    return trackdf
-
 def get_mat_paths_for_all_vids(acquisition_dir, subfolder='*', ftype='track'):
     '''
     Get all .mat files associated with a given acquisition (experiment)
@@ -1588,9 +1573,6 @@ def load_flytracker_data(acq_dir, calib_is_upstream=False, fps=60,
     try:
         feat_ = load_feat(acq_dir, subfolder=subfolder)
         trk_ = load_tracks(acq_dir, subfolder=subfolder)
-
-        trackdf = add_frame_nums(trk_, fps=calib['FPS'])
-        featdf = add_frame_nums(feat_, fps=calib['FPS'])
 
         if filter_ori:
             # find locs where ORI info can't be trusted
