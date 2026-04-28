@@ -1575,9 +1575,10 @@ def load_flytracker_data(acq_dir, calib_is_upstream=False, fps=60,
         feat_ = load_feat(acq_dir, subfolder=subfolder)
         trk_ = load_tracks(acq_dir, subfolder=subfolder)
 
+        # orientation is essentially the heading angle 
         if filter_ori:
-            # find locs where ORI info can't be trusted
-            no_wing_info = trk_[trk_[['wing_l_x', 'wing_l_y', 'wing_r_x', 'wing_r_y']].isna().sum(axis=1) == 4 ].index
+            # find locs where ORI info can't be trusted, where no wing info (all wing x and y are NaN) -- set ORI to NaN there
+            no_wing_info = trk_[trk_[['wing_l_x', 'wing_l_y', 'wing_r_x', 'wing_r_y']].isna().sum(axis=1) == 4].index
             trk_.loc[no_wing_info, 'ori'] = np.nan
     except Exception as e:
         print("ERROR: No TRACKS for {}".format(acq_dir))
