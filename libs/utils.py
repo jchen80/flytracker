@@ -581,13 +581,15 @@ def translate_coordinates_to_focal_fly(fly1, fly2):
     Assumes coordsinates have been centered already (ctr_x, ctr_y).
 
     Arguments:
-        fly1 -- _description_
-        fly2 -- _description_
+        fly1 -- trk df with columns 'ctr_x' and 'ctr_y' for focal fly
+        fly2 -- trk df with columns 'ctr_x' and 'ctr_y' for other fly
 
     Returns:
-        fly1, fly2 with columns 'trans_x' and 'trans_y'. fly1 is 0.
+        fly1, fly2 with columns 'trans_x' and 'trans_y'. fly1 is centered at (0, 0).
     '''
     assert 'ctr_x' in fly1.columns, "No 'ctr_x' column in fly1 df"
+    assert 'ctr_y' in fly1.columns, "No 'ctr_y' column in fly1 df"
+
     fly1['trans_x'] = fly1['ctr_x'] - fly1['ctr_x']
     fly1['trans_y'] = fly1['ctr_y'] - fly1['ctr_y']
     fly2['trans_x'] = fly2['ctr_x'] - fly1['ctr_x']
