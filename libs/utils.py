@@ -1413,21 +1413,22 @@ def load_mat_frames_and_var(mat_fpath):
  
 def load_mat(mat_fpaths): 
     '''
-    Load track.mat and parse into dataframe. Assumes data is nflies, nframes, nflags.
+    Load track.mat or feat.mat and parse into dataframe. Assumes data is nflies, nframes, nflags.
 
     Args:
     -----
     mat_fpaths: list
-        List of path(s) to -track.mat file (from FlyTracker) 
+        List of path(s) to -track.mat or -feat.mat files (from FlyTracker) 
+
+    Accepts a list of file paths, in case there are multiple .mat files for an acquisition (e.g., multiple chambers, or multiple subdirs). 
+    Will concatenate data from all .mat files into one dataframe.
 
     Returns:
     -------
     df: (pd.DataFrame)
         Dataframe of all the extracted data from FlyTracker.
-        Rows are frames, columns are features (including fly ID, 'id')
+        Rows are frames per individual fly, columns are features (including fly ID, 'id')
     '''
-    #ft_outfile = glob.glob(os.path.join(results_dir, '*', '*track.mat'))[0]
-    #print(ft_outfile)
     all_dfs=[]
     for mat_fpath in sorted(mat_fpaths, key=natsort):
         try:
@@ -1437,12 +1438,12 @@ def load_mat(mat_fpaths):
             mdata = mat.get(struct_name[0])
 
             # Use fields to create dict
-            # 'names' (1, 35) 
+            # 'names' {1 x n_fields cell} names of fields in the .data object 
             # 'data' (n_flies, n_frames, n_fields)
             # 'flags' (possible switches, check with flytracker/visualizer)
             mdtype = mdata.dtype
-            ndata = {n: mdata[n][0][0] for n in mdtype.names}
-            columns = [n[0].replace(' ', '_') for n in ndata['names'][0]]
+            ndata = {n: mdata[n][0][0] for n in mdtype.names} # make dict that maps field names to the corresponding data in the .mat struct. ndata['names'] is the names of the features, ndata['data'] is the actual data (n_flies, n_frames, n_fields)
+            columns = [n[0].replace(' ', '_') for n in ndata['names'][0]] # replace spaces with "_" in column names 
         except NotImplementedError as e:
             mat = mat73.loadmat(mat_fpath) #scipy.io.loadmat(mat_fpath)
             struct_name = [k for k in mat.keys() if not k.startswith('__')]
@@ -1450,18 +1451,18 @@ def load_mat(mat_fpaths):
             ndata = mat[struct_name[0]] 
             columns = [n.replace(' ', '_') for n in ndata['names']]
 
-        n_flies, n_frames, n_flags = ndata['data'].shape
+        n_flies, _, _ = ndata['data'].shape
         d_list=[]
+        # iterate through flies, make df for each fly, then concat
         for fly_ix in range(n_flies):
             tmpdf = pd.DataFrame(data=ndata['data'][fly_ix, :], columns=columns)
             tmpdf['id'] = fly_ix
             d_list.append(tmpdf)
         df_ = pd.concat(d_list, axis=0, ignore_index=True)
-        df_['fpath'] = mat_fpath  
+        df_['fpath'] = mat_fpath  # track which .mat file data came from (e.g., which chamber or subdir)
         all_dfs.append(df_) 
         
     df = pd.concat(all_dfs, axis=0, ignore_index=True)
-
     return df
 
 def load_binary_evs_from_mat(matlab_src, feat=None, sex='m',
