@@ -65,11 +65,16 @@ Steps
 import os
 import glob
 import importlib
+import sys
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+module_path = os.path.abspath(os.path.join('../../..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
+print(f"Added {module_path} to sys.path")
 import libs.utils as util
 import libs.plotting as putil
 import transform_data.relative_metrics as rel
@@ -86,7 +91,7 @@ bg_color = [0.7]*3 if plot_style == 'dark' else 'k'
 #%%
 # Paths
 # -------------------------------------------------------------------
-rootdir = '/Volumes/Juliana/2d-projector/example-data' # root directory containing experiment data
+rootdir = '/Volumes/Julie/2d-projector/example-data' # root directory containing experiment data
 experiment = 'one-dot' 
 basedir = os.path.join(rootdir, experiment)  # base directory for 
 acquisition_parentdir = os.path.join(basedir, 'videos')
