@@ -1426,7 +1426,7 @@ def load_mat_frames_and_var(mat_fpath):
     return df
  
  
-def load_mat(mat_fpaths): #results_dir):
+def load_mat(mat_fpaths): 
     '''
     Load track.mat and parse into dataframe. Assumes data is nflies, nframes, nflags.
 
@@ -1563,9 +1563,17 @@ def load_flytracker_data(acq_dir, calib_is_upstream=False, fps=60,
     
     Returns:
     --------
-    calib: 
+    calib: dictionary where keys are general parameters of the video and tracking (e.g., FPS, PPM, w, h, n_chambers) and values are the corresponding values from the calibration.mat file. If calibration.mat is missing, will return empty dict.
     trackdf: raw tracking data (e.g., position, orientation, left wing ang)
+        - df (Pandas) should be of shape (n_frames x n_flies, n_features)
+        - ordered such that the first n_frames rows correspond to fly 0, the next n_frames rows correspond to fly 1, etc.
+        - columns include the frame, sec, id and
+          basic tracking features (e.g., pos_x, pos_y, body_area, major_axis_len, minor_axis_len, etc)
     featdf: features derived from tracking data (e.g., velocity, dist to x)
+        - df (Pandas) should be of shape (n_frames x n_flies, n_features)
+        - ordered such that the first n_frames rows correspond to fly 0, the next n_frames rows correspond to fly 1, etc.
+        - columns include the frame, sec, id and
+          derived features (e.g., vel_x, vel_y, dist_to_other, etc)
     '''
     #% Get corresponding calibration file
     calib=None; trackdf=None; featdf=None;
