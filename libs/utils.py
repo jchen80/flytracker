@@ -1289,6 +1289,22 @@ def load_calibration(curr_acq, calib_is_upstream=False):
     '''
     Load calibration.mat from FlyTracker
 
+    Load calibration.mat from FlyTracker. 
+    1. Searches for the calibration.mat file in the parent directory of curr_acq (if calib_is_upstream=True) or in curr_acq (if False).
+    2. Loads the .mat file and extracts the struct containing calibration data.
+    3. Parses the struct fields and values into a Python dictionary, extracting the relevant fields andconverting types as needed
+
+    fieldnames
+    - rois - (n_chambers, 4) array of [y, x, height, width] for each chamber. coordinates of extreme points of chamber. 
+        Can use to estimate w/h if missing.
+    - centroids - (n_chambers, 2) array of [x, y] for each chamber. centroid coordinates of each chamber.
+        Can use to estimate w/h if missing.
+    - w, h - frame width and height. If missing, will try to estimate from rois.
+    - FPS - frames per second
+    - PPM - pixels per mm
+    - n_chambers, n_rows, n_cols - chamber layout info
+    - cop_ind - index of frames where copulation occurs
+
     Args:
     -----
     curr_acq: (str)
@@ -1353,31 +1369,25 @@ def load_calibration(curr_acq, calib_is_upstream=False):
     h_missing = 'h' not in calib or (isinstance(calib['h'], np.ndarray) and calib['h'].size == 0)
     if w_missing or h_missing:
         source = None
+        # `rois` in calib is (n_chambers, 4) array of [y, x, height, width] for each chamber. Can use to estimate w/h if missing.
         if 'rois' in calib and isinstance(calib['rois'], np.ndarray) and calib['rois'].size > 0:
             roi = calib['rois']
             if roi.ndim == 1:
-                # single chamber: [x, y, width, height]
+                # single chamber: [y, x, height, width]
                 if w_missing:
-                    calib['w'] = float(roi[0] + roi[2])
+                    calib['w'] = float(roi[3])
                 if h_missing:
-                    calib['h'] = float(roi[1] + roi[3])
+                    calib['h'] = float(roi[2])
             else:
                 # multiple chambers: (n_chambers, 4)
                 if w_missing:
-                    calib['w'] = float((roi[:, 0] + roi[:, 2]).max())
+                    calib['w'] = float((roi[:, 3]).max())
                 if h_missing:
-                    calib['h'] = float((roi[:, 1] + roi[:, 3]).max())
+                    calib['h'] = float((roi[:, 2]).max())
             source = 'rois'
-        elif 'centroids' in calib and isinstance(calib['centroids'], np.ndarray) and calib['centroids'].size > 0:
-            ctr = calib['centroids'].flatten()
-            if w_missing:
-                calib['w'] = float(ctr[0] * 2)
-            if h_missing:
-                calib['h'] = float(ctr[1] * 2)
-            source = 'centroids'
         if source:
             print("WARNING: estimated frame size from {}: w={}, h={}".format(
-                source, calib.get('w', 'MISSING'), calib.get('h', 'MISSING')))
+                source, calib.get('w', 'MISSING'), calib.get('h', 'MISSING'))) # 2nd arg is the value given if value is missing for the key
 
     return calib
 
