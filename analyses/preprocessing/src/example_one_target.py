@@ -71,10 +71,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-module_path = os.path.abspath(os.path.join('../../..'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
-print(f"Added {module_path} to sys.path")
 import libs.utils as util
 import libs.plotting as putil
 import transform_data.relative_metrics as rel

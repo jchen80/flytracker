@@ -18,10 +18,6 @@ import matplotlib as mpl
 import pickle as pkl
 import argparse
 
-# import some custom funcs
-module_path = os.path.abspath(os.path.join('..'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
 import libs.utils as util
 
 
@@ -544,9 +540,9 @@ def do_transformations_on_df(trk_, frame_width, frame_height,
     Includes calculate_thet_error()
 
     Arguments:
-        trk_ -- _description_
-        frame_width -- _description_
-        frame_height -- _description_
+        trk_ -- df with basic track data, positions, orientations, etc. 
+        frame_width -- width of video frame, generally from calibration 
+        frame_height -- height of video frame, generally from calibration
 
     Keyword Arguments:
         feat_ (pd.DataFrame, None): include of feak/trk separate (default: {None})
