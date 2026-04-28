@@ -62,7 +62,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
 
-import multi_funcs as mf
+import analyses.two_targets.src.multi_funcs as mf
 import libs.utils as util
 import libs.plotting as putil
 import transform_data.relative_metrics as rel
