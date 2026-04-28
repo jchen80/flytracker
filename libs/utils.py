@@ -553,7 +553,8 @@ def calculate_female_size_deg(xi, yi, f_ori, f_len):
 def center_coordinates(df, frame_width, frame_height, 
                        xvar='pos_x', yvar='pos_y', ctrx='ctr_x', ctry='ctr_y'):
     '''
-    _summary_
+    Center coordinates by subtracting frame_width/2 and frame_height/2 from xvar and yvar, respectively. 
+    This way, the center of the frame is (0, 0) and the fly's position is relative to the center.
 
     Arguments:
         df -- pd.DataFrame with columns xvar and yvar
