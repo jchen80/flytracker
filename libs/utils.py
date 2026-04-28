@@ -562,10 +562,10 @@ def center_coordinates(df, frame_width, frame_height,
         frame_height -- width of frame, corresponds to fly y-pos
 
     Keyword Arguments:
-        xvar -- _description_ (default: {'pos_x'})
-        yvar -- _description_ (default: {'pos_y'})
-        ctrx_x -- _description_ (default: {'ctr_x'})
-        ctrx_y -- _description_ (default: {'ctr_y'})
+        xvar -- name of x-coordinate column (default: {'pos_x'})
+        yvar -- name of y-coordinate column (default: {'pos_y'})
+        ctrx_x -- output name of centered x-coordinate column (default: {'ctr_x'})
+        ctrx_y -- output name of centered y-coordinate column (default: {'ctr_y'})
 
     Returns:
         df -- pd.DataFrame with new columns ctr_x and ctr_y
