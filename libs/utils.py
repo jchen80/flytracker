@@ -512,18 +512,18 @@ def proj_a_onto_b(a, b):
     #proj_ = ortho_hat* np.sqrt(x_**2 + y_**2) * np.cos(ang_bw)
     return vproj_
 
-def calculate_female_size_deg(xi, yi, f_ori, f_len):
+def calculate_target_size_deg(xi, yi, target_ori, target_len):
     '''
-    Calculate size of target (defined by f_ori, f_len) in degrees of visual angle.
-    Finds vector orthogonal to focal and target flies. Calculates heading of target using f_ori and f_len. Then, projects target heading onto orthogonal vector.
-    Size is calculated as 2*arctan(fem_sz/(2*dist_to_other)).
-    Note: make sure units are consistent (e.g., pixels for f_len, xi, yi).
+    Calculate size of target (defined by target_ori, target_len) in degrees of visual angle.
+    Finds vector orthogonal to focal and target flies. Calculates heading of target using target_ori and target_len. Then, projects target heading onto orthogonal vector.
+    Size is calculated as 2*arctan(target_sz/(2*dist_to_other)).
+    Note: make sure units are consistent (e.g., pixels for target_len, xi, yi).
 
     Arguments:
         xi -- x coordinate of vector between focal and target flies
         yi -- y coordinate of vector between focal and target flies
-        f_ori -- orientation of target fly (from FlyTracker, -180 to 180; 0 faces east, positive is CCW)
-        f_len -- length of target fly (from FlyTracker, in pixels)
+        target_ori -- orientation of target fly (from FlyTracker, -180 to 180; 0 faces east, positive is CCW)
+        target_len -- length of target fly (from FlyTracker, in pixels)
 
     Returns:
         Returns calculated size in deg for provided inputs.
