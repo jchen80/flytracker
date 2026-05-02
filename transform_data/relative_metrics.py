@@ -242,26 +242,25 @@ def get_target_sizes_df(fly1, fly2, xvar='pos_x', yvar='pos_y'):
     Returns:
         fly2 -- returns fly2 with new column 'size_deg'
     '''
-    fem_sizes = []
+    target_sizes = []
     for ix in fly1.index.tolist():
         xi = fly2.loc[ix][xvar] - fly1.loc[ix][xvar] 
         yi = fly2.loc[ix][yvar] - fly1.loc[ix][yvar]
-        f_ori = fly2.loc[ix]['ori']
-        f_len_maj = fly2.loc[ix]['major_axis_len']
-        f_len_min = fly2.loc[ix]['minor_axis_len']
-        # take into account major/minor axes of ellipse
-        fem_sz_deg_maj = util.calculate_female_size_deg(xi, yi, f_ori, f_len_maj)
-        fem_sz_deg_min = util.calculate_female_size_deg(xi, yi, f_ori, f_len_min)
-        fem_sz_deg = np.max([fem_sz_deg_maj, fem_sz_deg_min])
-        fem_sizes.append(fem_sz_deg)
+        target_ori = fly2.loc[ix]['rel_ori']
+        target_len_maj = fly2.loc[ix]['major_axis_len']
+        target_len_min = fly2.loc[ix]['minor_axis_len']
 
-    #fly2['targ_ang_size'] = fem_sizes
-    #fly2['targ_ang_size_deg'] = np.rad2deg(fly2['targ_ang_size'])
-    # copy same info for f1
-    fly1['targ_ang_size'] = fem_sizes
+        # take into account major/minor axes of ellipse
+        target_sz_deg_maj = util.calculate_target_size_deg(xi, yi, target_ori, target_len_maj)
+        target_sz_deg_min = util.calculate_target_size_deg(xi, yi, target_ori, target_len_min)
+
+        target_sz_deg = np.max([target_sz_deg_maj, target_sz_deg_min])
+        target_sizes.append(target_sz_deg)
+
+    fly1['targ_ang_size'] = target_sizes
     fly1['targ_ang_size_deg'] = np.rad2deg(fly1['targ_ang_size'])
 
-    return fly1 #, fly2
+    return fly1
 
 
 def get_relative_velocity(df_, win=1, 
