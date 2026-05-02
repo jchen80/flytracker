@@ -596,14 +596,13 @@ def translate_coordinates_to_focal_fly(fly1, fly2, xvar='ctr_x', yvar='ctr_y'):
 
     return fly1, fly2
 
-def rotate_point(p, angle, origin=(0, 0)): #degrees=0):
+def rotate_point(p, angle, origin=(0, 0)):
     '''
     Calculate rotation matrix R and perform R.dot(p.T) to get rotated coords.
 
     Returns:
         _description_
     '''
-    #angle = np.deg2rad(degrees)
     R = np.squeeze(np.array([[np.cos(angle), -np.sin(angle)],
                   [np.sin(angle),  np.cos(angle)]]))
     o = np.atleast_2d(origin)
@@ -616,8 +615,9 @@ def rotate_coordinates_to_focal_fly(fly1, fly2):
     Assumes 'ori' is a column in fly1 and fly2. (from FlyTracker)
 
     Arguments:
-        fly1 -- _description_
-        fly2 -- _description_
+        fly1 -- trk df for focal fly, must contain 'ori' column for fly heading (from FlyTracker, -180 to 180; 0 faces east, positive is CCW)
+        fly2 -- trk df for other fly, must contain 'ori' column for fly heading (from FlyTracker, -180 to 180; 0 faces east, positive is CCW)
+        fly2's `trans_x` and `trans_y` columns should already be centered on fly1 (at the origin)
 
     Returns:
         fly1, fly2 with columns 'rot_x' and 'rot_y'. fly1 is 0.
