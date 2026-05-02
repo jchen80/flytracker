@@ -599,6 +599,7 @@ def translate_coordinates_to_focal_fly(fly1, fly2, xvar='ctr_x', yvar='ctr_y'):
 def rotate_point(p, angle, origin=(0, 0)):
     '''
     Calculate rotation matrix R and perform R.dot(p.T) to get rotated coords.
+    Rotation matrix is for a counterclockwise rotation by angle theta around some origin point
 
     Returns:
         _description_
@@ -632,8 +633,10 @@ def rotate_coordinates_to_focal_fly(fly1, fly2):
     fly2[['rot_x', 'rot_y']] = [rotate_point(pt, ang) for pt, ang in zip(fly2[['trans_x', 'trans_y']].values, ori_diff)]
 
     # rotate fly1 and fly2's orientation by ori_diff
-    fly2['rot_ori'] = fly2['ori'] + ori_diff     
-    fly1['rot_ori'] = fly1['ori'] + ori_diff
+    fly2['rot_ori'] = np.arctan2(np.sin(fly2['ori'] + ori_diff), 
+                              np.cos(fly2['ori'] + ori_diff))
+    fly1['rot_ori'] = np.arctan2(np.sin(fly1['ori'] + ori_diff), 
+                              np.cos(fly1['ori'] + ori_diff)) # should be 0 now
 
     return fly1, fly2
 
