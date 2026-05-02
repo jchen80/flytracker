@@ -227,7 +227,7 @@ def plot_frame_target_projection(ix, fly1, fly2, cap, xvar='pos_x', yvar='pos_y'
 
     return fig
 
-def get_target_sizes_df(fly1, fly2, xvar='pos_x', yvar='pos_y'):
+def get_target_sizes(fly1, fly2, xvar='pos_x', yvar='pos_y'):
     '''
     For provided df of tracks (FlyTracker), calculates the size of target in deg. 
 
@@ -235,31 +235,35 @@ def get_target_sizes_df(fly1, fly2, xvar='pos_x', yvar='pos_y'):
         fly1 -- df of tracks.mat for fly1 (male or focal fly) 
         fly2 -- df of tracks.mat for fly2 (female or target fly)
 
+        assumes that fly2 will have columns 'rel_ori', 'major_axis_len', and 'minor_axis_len' (if not, will need to add these with add_pairwise_metrics)
+
     Keyword Arguments:
         xvar -- position var to use for calculating vectors (default: {'pos_x'})
         yvar -- same as xvar (default: {'pos_y'})
 
     Returns:
-        fly2 -- returns fly2 with new column 'size_deg'
+        fly1 -- returns fly1 with new columns 'targ_ang_size' and 'targ_ang_size_deg'
     '''
+    assert 'rel_ori' in fly2.columns, "fly2 must have column 'rel_ori' for target orientation"
+    assert 'major_axis_len' in fly2.columns, "fly2 must have column 'major_axis_len' for target length"
+    assert 'minor_axis_len' in fly2.columns, "fly2 must have column 'minor_axis_len' for target length"
     target_sizes = []
     for ix in fly1.index.tolist():
-        xi = fly2.loc[ix][xvar] - fly1.loc[ix][xvar] 
-        yi = fly2.loc[ix][yvar] - fly1.loc[ix][yvar]
-        target_ori = fly2.loc[ix]['rel_ori']
+        diff_xi = fly2.loc[ix][xvar] - fly1.loc[ix][xvar] 
+        diff_yi = fly2.loc[ix][yvar] - fly1.loc[ix][yvar]
+        target_ori = fly2.loc[ix]['ori'] # use absolute orientation here 
         target_len_maj = fly2.loc[ix]['major_axis_len']
         target_len_min = fly2.loc[ix]['minor_axis_len']
 
         # take into account major/minor axes of ellipse
-        target_sz_deg_maj = util.calculate_target_size_deg(xi, yi, target_ori, target_len_maj)
-        target_sz_deg_min = util.calculate_target_size_deg(xi, yi, target_ori, target_len_min)
+        target_sz_deg_maj = util.calculate_target_size_deg(diff_xi, diff_yi, target_ori, target_len_maj)
+        target_sz_deg_min = util.calculate_target_size_deg(diff_xi, diff_yi, target_ori, target_len_min)
 
         target_sz_deg = np.max([target_sz_deg_maj, target_sz_deg_min])
         target_sizes.append(target_sz_deg)
 
     fly1['targ_ang_size'] = target_sizes
     fly1['targ_ang_size_deg'] = np.rad2deg(fly1['targ_ang_size'])
-
     return fly1
 
 
@@ -645,9 +649,9 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
         if verbose:
             print("... getting target sizes")
         #% Get all sizes and aggregate trk df
-        fly1 = get_target_sizes_df(fly1, fly2, xvar='pos_x', yvar='pos_y')
+        fly1 = get_target_sizes(fly1, fly2, xvar='pos_x', yvar='pos_y')
         # Repeat for fly2:
-        fly2 = get_target_sizes_df(fly2, fly1, xvar='pos_x', yvar='pos_y')
+        fly2 = get_target_sizes(fly2, fly1, xvar='pos_x', yvar='pos_y')
 
     if verbose:
         print("... calculating theta error")

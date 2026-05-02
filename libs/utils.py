@@ -520,34 +520,28 @@ def calculate_target_size_deg(xi, yi, target_ori, target_len):
     Note: make sure units are consistent (e.g., pixels for target_len, xi, yi).
 
     Arguments:
-        xi -- x coordinate of vector between focal and target flies
-        yi -- y coordinate of vector between focal and target flies
+        xi -- x coordinate of vector (target fly - focal fly)
+        yi -- y coordinate of vector (target fly - focal fly)
         target_ori -- orientation of target fly (from FlyTracker, -180 to 180; 0 faces east, positive is CCW)
         target_len -- length of target fly (from FlyTracker, in pixels)
 
     Returns:
         Returns calculated size in deg for provided inputs.
     '''
-    # get vector between male and female
-    #xi = fly2.loc[ix][xvar] - fly1.loc[ix][xvar] 
-    #yi = fly2.loc[ix][yvar] - fly1.loc[ix][yvar]
-
     # get vector orthogonal to male's vector to female
-    ortho_ = [yi, -xi] #ortho_hat = ortho_ / np.linalg.norm(ortho_)
+    ortho_ = [yi, -xi] 
 
     # project female heading vec onto orthog. vec
-    #f_ori = fly2.loc[ix]['ori']
-    #f_len = fly2.loc[ix]['major_axis_len']
-    fem_vec = get_heading_vector(f_ori, f_len) #np.array([x_, y_])
+    target_vec = get_heading_vector(target_ori, target_len) #np.array([x_, y_])
     #female_hat = fem_vec / np.linalg.norm(fem_vec)
-    vproj_ = proj_a_onto_b(fem_vec, ortho_)
+    vproj_ = proj_a_onto_b(target_vec, ortho_)
 
     # calculate detg vis angle
-    fem_sz = np.sqrt(vproj_[0]**2 + vproj_[1]**2) * 2
+    target_sz = np.sqrt(vproj_[0]**2 + vproj_[1]**2) * 2
     dist_to_other = np.sqrt(xi**2 + yi**2)
-    fem_sz_deg = 2*np.arctan(fem_sz/(2*dist_to_other))
+    target_sz_deg = 2*np.arctan(target_sz/(2*dist_to_other))
 
-    return fem_sz_deg
+    return target_sz_deg
 
 
 def center_coordinates(df, centroid_x, centroid_y, 
