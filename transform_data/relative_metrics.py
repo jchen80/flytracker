@@ -545,7 +545,8 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
         frame_height -- height of video frame, generally from calibration
 
     Keyword Arguments:
-        feat_ (pd.DataFrame, None): include of feak/trk separate (default: {None})
+        feat_ (pd.DataFrame, None): df with features, including dist_to_other (default: {None})
+            - can be None if feat_ concatenated within trk_
         cop_ix (int): Frame index of copulation start (default: {None})
         flyid1 (int): id of male (default: {0})
         flyid2 (int): id of female (default: {1})
@@ -599,6 +600,7 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
     fly1['targ_pos_theta'] = polarcoords[1]
     fly1['targ_rel_pos_x'] = fly2['rot_x']
     fly1['targ_rel_pos_y'] = fly2['rot_y']
+    fly1['targ_rel_ori'] = fly2['rot_ori']
 
     # NOW, do fly2: ----------------------------------------------------
     # translate coordinates so that focal fly is at origin
@@ -627,6 +629,10 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
     fly2['targ_pos_theta'] = polarcoords[1]
     fly2['targ_rel_pos_x'] = fly1['rot_x']
     fly2['targ_rel_pos_y'] = fly1['rot_y']
+    fly2['targ_rel_ori'] = fly1['rot_ori']
+
+    df = pd.concat([fly1, fly2], axis=0).reset_index(drop=True) #.so
+    return df
 
     #% copulation index - TMP: fix this!
     if cop_ix is None or np.isnan(cop_ix):
