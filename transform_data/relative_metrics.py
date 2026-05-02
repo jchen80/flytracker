@@ -529,7 +529,7 @@ def calculate_angle_metrics_focal_fly(df0, winsize=5, grouper='acquisition',
     return df
 
 
-def do_transformations_on_df(trk_, frame_width, frame_height, 
+def do_transformations_on_df(trk_, centroid_x, centroid_y,
                              feat_=None,
                              cop_ix=None, flyid1=0, flyid2=1,
                              verbose=False, get_relative_sizes=True, 
@@ -556,14 +556,13 @@ def do_transformations_on_df(trk_, frame_width, frame_height,
     if feat_ is None:
         assert 'dist_to_other' in trk_.columns, "No feat df provided. Need dist_to_other."
 
-
-    # center x- and y-coordinates
+    # center x- and y-coordinates, generate new columns ctr_x and ctr_y which report position relative to center of frame 
     if verbose:
         print("Doing transformations:") #.format(acq)) 
         print("... centering coordinates")
-    trk_ = util.center_coordinates(trk_, frame_width, frame_height) 
+    trk_ = util.center_coordinates(trk_, centroid_x, centroid_y) 
 
-    # separate fly1 and fly2
+    # extract copies of trk and feat dfs for each fly 
     fly1 = trk_[trk_['id']==flyid1].copy().reset_index(drop=True)
     fly2 = trk_[trk_['id']==flyid2].copy().reset_index(drop=True)
 
@@ -582,7 +581,7 @@ def do_transformations_on_df(trk_, frame_width, frame_height,
     fly1['targ_centered_to_focal_x'] = fly2['trans_x']
     fly1['targ_centered_to_focal_y'] = fly2['trans_y']
 
-    # add vel
+    # add vel, both of which are position agnostic 
     fly1['target_vel'] = fly2_feat['vel']
     fly1['target_ang_vel'] = fly2_feat['ang_vel']
 
