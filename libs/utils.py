@@ -522,7 +522,7 @@ def calculate_target_size_deg(xi, yi, target_ori, target_len):
     Arguments:
         xi -- x coordinate of vector (target fly - focal fly)
         yi -- y coordinate of vector (target fly - focal fly)
-        target_ori -- orientation of target fly (from FlyTracker, -180 to 180; 0 faces east, positive is CCW)
+        target_ori -- absolute orientation of target fly (from FlyTracker, -180 to 180; 0 faces east, positive is CCW)
         target_len -- length of target fly (from FlyTracker, in pixels)
 
     Returns:
@@ -532,11 +532,10 @@ def calculate_target_size_deg(xi, yi, target_ori, target_len):
     ortho_ = [yi, -xi] 
 
     # project female heading vec onto orthog. vec
-    target_vec = get_heading_vector(target_ori, target_len) #np.array([x_, y_])
-    #female_hat = fem_vec / np.linalg.norm(fem_vec)
+    target_vec = get_heading_vector(target_ori, target_len)
     vproj_ = proj_a_onto_b(target_vec, ortho_)
 
-    # calculate detg vis angle
+    # calculate deg vis angle
     target_sz = np.sqrt(vproj_[0]**2 + vproj_[1]**2) * 2
     dist_to_other = np.sqrt(xi**2 + yi**2)
     target_sz_deg = 2*np.arctan(target_sz/(2*dist_to_other))
