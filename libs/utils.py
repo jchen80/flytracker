@@ -625,32 +625,22 @@ def rotate_coordinates_to_focal_fly(fly1, fly2):
     '''
     assert 'trans_x' in fly1.columns, "trans_x not found in fly1 DF"
     ori_vals = fly1['ori'].values # -pi to pi
-    ori = -1*ori_vals + np.deg2rad(0) # ori - ori is 0 heading 
+    ori_diff = -1*ori_vals + np.deg2rad(0) # to rotate fly1 to 0, we need to rotate by -ori_vals
 
+    # rotate fly2's relative position by ori_diff
     fly2[['rot_x', 'rot_y']]= np.nan
-    fly1[['rot_x', 'rot_y']] = 0
+    fly2[['rot_x', 'rot_y']] = [rotate_point(pt, ang) for pt, ang in zip(fly2[['trans_x', 'trans_y']].values, ori_diff)]
 
-    #rotmats = np.array([np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])\
-    #            for theta in ori] )
-
-    #xys = fly2[['trans_x', 'trans_y']].values
-    #fly2[['rot_x', 'rot_y']] = [rot.dot(xy) for xy, rot in zip(xys, rotmats)]
-
-    fly2[['rot_x', 'rot_y']] = [rotate_point(pt, ang) for pt, ang in zip(fly2[['trans_x', 'trans_y']].values, ori)]
-
-    fly2['rot_ori'] = fly2['ori'] + ori                 
-    fly1['rot_ori'] = fly1['ori'] + ori # should be 0
+    # rotate fly1 and fly2's orientation by ori_diff
+    fly2['rot_ori'] = fly2['ori'] + ori_diff     
+    fly1['rot_ori'] = fly1['ori'] + ori_diff
 
     return fly1, fly2
 
 
 def cart2pol(x, y):
     '''
-    Returns radius * theta in radians
-
-    Arguments:
-        x -- _description_
-        y -- _description_
+    Returns (radius, theta in radians) for given x and y coordinates.
     '''
     rho = np.sqrt(x**2 + y**2)
     phi = np.arctan2(y, x)
