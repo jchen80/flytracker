@@ -650,12 +650,12 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
 
     if verbose:
         print("... calculating theta error")
-    # calculate theta error
+    # calculate theta error, which is the angle between either the fly's orientation (heading) or traveling direction
+    # and the line between the fly and the target (the other fly)
     fly1 = calculate_theta_error(fly1, fly2)
     fly1 = calculate_theta_error_from_traveling_direction(fly1, fly2)
     fly2 = calculate_theta_error(fly2, fly1)
     fly2 = calculate_theta_error_from_traveling_direction(fly2, fly1)
-
 
     # recombine trk df
     trk = pd.concat([fly1.iloc[:cop_ix], fly2.iloc[:cop_ix]], axis=0).reset_index(drop=True)#.sort_index()
