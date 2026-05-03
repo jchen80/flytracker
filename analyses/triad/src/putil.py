@@ -290,3 +290,152 @@ def plot_transformation_sanity_check(df, calib, avi_path, frame_idx=None,
         print(f"Saved to {savepath}")
 
     return fig
+
+def extract_bout_clips(df, avi_path, save_dir, max_frames=600, mark_flies=False, 
+                       id_colors=None, n_clips=1):
+    '''
+    Extract video clips per action type in df.
+    Clips are at most max_frames long, centered on the bout if the bout is shorter.
+
+    Arguments:
+        df       -- tracks dataframe with action and boutnum columns
+        avi_path -- path to source .avi file
+        save_dir -- directory to save clips
+
+    Keyword Arguments:
+        max_frames -- maximum clip length in frames; use -1 for full bout (default: 600)
+        mark_flies -- if True, draw actor/target markers on each frame (default: False)
+        id_colors  -- dict mapping fly id to BGR color tuple (default: None)
+        n_clips    -- number of clips to extract per action; use -1 for all (default: 1)
+
+    Returns:
+        clip_paths -- list of saved clip paths
+    '''
+    if id_colors is None:
+        id_colors = {
+            0: (255, 144, 30),   # dodgerblue in BGR
+            1: (71, 99, 255),    # tomato in BGR
+            2: (50, 205, 50),    # limegreen in BGR
+        }
+
+    action_cols = [c for c in df.columns if f'{c}_boutnum' in df.columns]
+    if len(action_cols) == 0:
+        print("No action columns found in df.")
+        return []
+
+    cap = cv2.VideoCapture(avi_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    clips_dir = os.path.join(save_dir, 'bout_clips')
+    os.makedirs(clips_dir, exist_ok=True)
+    clip_paths = []
+
+    # loop over all possible actions 
+    for action in action_cols:
+        boutnum_col = f'{action}_boutnum'
+        target_col = f'{action}_target'
+        has_target = target_col in df.columns
+
+        total_bouts = sorted(df[df[action] != -1][boutnum_col].dropna().unique())
+        if len(total_bouts) == 0:
+            print(f"No bouts found for action: {action}")
+            continue
+
+        bouts_to_extract = total_bouts if n_clips == -1 else total_bouts[:n_clips]
+        print(f"Extracting {len(bouts_to_extract)}/{len(total_bouts)} bouts for action: {action}")
+
+        # iterate over bouts_to_extract bouts per action 
+        for bout_num in bouts_to_extract:
+            bout_rows = df[df[boutnum_col] == bout_num]
+            bout_start = int(bout_rows['frame'].min())
+            bout_end = int(bout_rows['frame'].max())
+            bout_len = bout_end - bout_start + 1
+
+            # Compute clip window
+            clip_start = max(0, bout_start)
+            clip_end = min(total_frames - 1, bout_end)
+
+            if max_frames != -1 and (clip_end - clip_start + 1) > max_frames:
+                bout_center = (bout_start + bout_end) // 2
+                clip_start = max(0, bout_center - max_frames // 2)
+                clip_end = min(total_frames - 1, clip_start + max_frames - 1)
+
+            clip_len = clip_end - clip_start + 1
+            clip_name = f'{action}_bout{int(bout_num):03d}_frames{clip_start}-{clip_end}.mp4'
+            clip_path = os.path.join(clips_dir, clip_name)
+
+            print(f"  Writing {clip_name} ({clip_len} frames, bout length={bout_len})")
+
+            # Pre-build frame lookup dictionary for marking
+            if mark_flies:
+                frame_lookup = {}
+                for frame_idx in range(clip_start, clip_end + 1):
+                    frame_df = df[df['frame'] == frame_idx]
+                    fly_positions = {}
+                    for _, row in frame_df.drop_duplicates('id').iterrows():
+                        fly_id = int(row['id'])
+                        fly_positions[fly_id] = (int(row['pos_x']), int(row['pos_y']))
+
+                    actor_id = None
+                    target_id = None
+                    actor_rows = frame_df[frame_df[action] == frame_df['id']]
+                    if len(actor_rows) > 0:
+                        actor_id = int(actor_rows.iloc[0]['id'])
+                        if has_target:
+                            targ_val = actor_rows.iloc[0][target_col]
+                            if targ_val is not None and targ_val != -1:
+                                target_id = int(targ_val)
+
+                    frame_lookup[frame_idx] = (fly_positions, actor_id, target_id)
+
+            # Write clip
+            cap.set(cv2.CAP_PROP_POS_FRAMES, clip_start)
+            fourcc = cv2.VideoWriter_fourcc(*'avc1')
+            out = cv2.VideoWriter(clip_path, fourcc, fps, (frame_w, frame_h))
+
+            for frame_idx in range(clip_start, clip_end + 1):
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if mark_flies:
+                    fly_positions, actor_id, target_id = frame_lookup[frame_idx]
+
+                    # Small dot for all flies
+                    for fly_id, (px, py) in fly_positions.items():
+                        color = id_colors.get(fly_id, (255, 255, 255))
+                        cv2.circle(frame, (px, py), radius=6, color=color, thickness=-1)
+
+                    # Larger ring + 'A' for actor
+                    if actor_id is not None and actor_id in fly_positions:
+                        px, py = fly_positions[actor_id]
+                        color = id_colors.get(actor_id, (255, 255, 255))
+                        cv2.circle(frame, (px, py), radius=12, color=color, thickness=2)
+                        cv2.putText(frame, 'A', (px + 14, py - 14),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+                    # Larger ring + 'T' for target
+                    if target_id is not None and target_id in fly_positions:
+                        px, py = fly_positions[target_id]
+                        color = id_colors.get(target_id, (255, 255, 255))
+                        cv2.circle(frame, (px, py), radius=12, color=color, thickness=2)
+                        cv2.putText(frame, 'T', (px + 14, py - 14),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+                    # Action label and frame number — dimmed outside bout
+                    is_bout_frame = bout_start <= frame_idx <= bout_end
+                    label_color = (255, 255, 255) if is_bout_frame else (120, 120, 120)
+                    cv2.putText(frame, f'{action} frame {frame_idx}', (10, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, label_color, 2)
+
+                out.write(frame)
+
+            out.release()
+            clip_paths.append(clip_path)
+
+    cap.release()
+    print(f"Saved {len(clip_paths)} clips to {clips_dir}")
+    return clip_paths
