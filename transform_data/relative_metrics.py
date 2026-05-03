@@ -370,8 +370,6 @@ def calculate_theta_error(f1, f2, xvar='pos_x', yvar='pos_y', fps=60.):
     f1['abs_ang_between'] = abs_ang # this is the line-of-sigh, line btween pursuer and target
     f1['theta_error'] = th_err
     
-    if 'sec' not in f1.columns:
-        f1['sec'] = f1['frame'] / fps
     f1['theta_error_dt'] = pd.Series(np.unwrap(f1['theta_error'].interpolate().ffill().bfill())).diff() / f1['sec'].diff().mean()
     f1['theta_error_deg'] = np.rad2deg(f1['theta_error'])
 
@@ -557,6 +555,11 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
     '''
     if feat_ is None:
         assert 'dist_to_other' in trk_.columns, "No feat df provided. Need dist_to_other."
+
+    if 'sec' not in trk_.columns:
+        trk_['sec'] = trk_['frame'] / fps
+    if 'sec' not in feat_.columns:
+        feat_['sec'] = feat_['frame'] / fps
 
     # center x- and y-coordinates, generate new columns ctr_x and ctr_y which report position relative to center of frame 
     if verbose:
