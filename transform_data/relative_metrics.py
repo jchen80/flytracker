@@ -556,11 +556,6 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
     if feat_ is None:
         assert 'dist_to_other' in trk_.columns, "No feat df provided. Need dist_to_other."
 
-    if 'sec' not in trk_.columns:
-        trk_['sec'] = trk_['frame'] / fps
-    if 'sec' not in feat_.columns:
-        feat_['sec'] = feat_['frame'] / fps
-
     # center x- and y-coordinates, generate new columns ctr_x and ctr_y which report position relative to center of frame 
     if verbose:
         print("Doing transformations:") #.format(acq)) 
