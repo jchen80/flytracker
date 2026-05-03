@@ -93,9 +93,9 @@ for acq, df_ in df0.groupby('acquisition'):
         f2['sec_diff'] = f2['sec'].diff()
     # calculate theta error
     f1 = rel.calculate_theta_error(f1, f2)
-    f1 = rel.calculate_theta_error_from_heading(f1, f2)
+    f1 = rel.calculate_theta_error_from_traveling_direction(f1, f2)
     f2 = rel.calculate_theta_error(f2, f1)
-    f2 = rel.calculate_theta_error_from_heading(f2, f1)
+    f2 = rel.calculate_theta_error_from_traveling_direction(f2, f1)
     # add
     d_list.append(f1)
     d_list.append(f2)

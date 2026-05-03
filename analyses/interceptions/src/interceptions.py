@@ -111,8 +111,8 @@ def get_f1_and_f2(df, win=10, fps=60):
     f2.index = f1['frame'].values
 
     f1 = rel.calculate_theta_error(f1, f2, xvar='pos_x', yvar='pos_y')
-    f1 = rel.calculate_heading(f1, winsize=5)
-    f2 = rel.calculate_heading(f2, winsize=5)
+    f1 = rel.calculate_traveling_direction(f1, winsize=5)
+    f2 = rel.calculate_traveling_direction(f2, winsize=5)
 
     # Calculate difference in ori between consecutive rows 
     f1['turn_size'] = f1['ori'].transform(lambda x: x.diff())

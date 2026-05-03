@@ -366,8 +366,7 @@ def calculate_theta_error(f1, f2, xvar='pos_x', yvar='pos_y', fps=60.):
     vec_between = f2[[xvar, yvar]] - f1[[xvar, yvar]]
     abs_ang = np.arctan2(vec_between[yvar], vec_between[xvar])
     th_err = util.circular_distance(abs_ang, f1['ori']) # already bw -np.pi, pi
-    #th_err = [util.set_angle_range_to_neg_pos_pi(v) for v in th_err]
-    #th_err[0] = th_err[1]
+
     f1['abs_ang_between'] = abs_ang # this is the line-of-sigh, line btween pursuer and target
     f1['theta_error'] = th_err
     
@@ -378,30 +377,29 @@ def calculate_theta_error(f1, f2, xvar='pos_x', yvar='pos_y', fps=60.):
 
     return f1
 
-def calculate_theta_error_from_heading(f1, f2, xvar='pos_x', yvar='pos_y'):
-    if 'heading' not in f1.columns:
-        f1 = calculate_heading(f1)
-        f2 = calculate_heading(f2)
+def calculate_theta_error_from_traveling_direction(f1, f2, xvar='pos_x', yvar='pos_y'):
+    if 'traveling' not in f1.columns:
+        f1 = calculate_traveling_direction(f1)
+        f2 = calculate_traveling_direction(f2)
 
     vec_between = f2[[xvar, yvar]] - f1[[xvar, yvar]]
     abs_ang = np.arctan2(vec_between[yvar], vec_between[xvar])
-    th_err = util.circular_distance(abs_ang, f1['heading']) # already bw -np.pi, pi
-    #th_err = [util.set_angle_range_to_neg_pos_pi(v) for v in th_err]
-    #th_err[0] = th_err[1]
-    f1['theta_error_heading'] = th_err
-    f1['theta_error_heading_dt'] = pd.Series(np.unwrap(f1['theta_error'].interpolate().ffill().bfill())).diff() / f1['sec'].diff().mean()
-    f1['theta_error_heading_deg'] = np.rad2deg(f1['theta_error'])
+    th_err = util.circular_distance(abs_ang, f1['traveling']) # already bw -np.pi, pi
+
+    f1['theta_error_traveling'] = th_err
+    f1['theta_error_traveling_dt'] = pd.Series(np.unwrap(f1['theta_error'].interpolate().ffill().bfill())).diff() / f1['sec'].diff().mean()
+    f1['theta_error_traveling_deg'] = np.rad2deg(f1['theta_error'])
 
     return f1
 
-def calculate_heading(df_, winsize=5):
+def calculate_traveling_direction(df_, winsize=5):
     #% smooth x, y, 
     df_['pos_x_smoothed'] = df_.groupby('id')['pos_x'].transform(lambda x: x.rolling(winsize, 1).mean())
     df_['pos_y_smoothed'] = 1*df_.groupby('id')['pos_y'].transform(lambda x: x.rolling(winsize, 1).mean())  # for FlyTracker, flipud
 
-    # calculate heading
-    df_['heading'] = np.arctan2(df_['pos_y_smoothed'].diff(), df_['pos_x_smoothed'].diff())
-    df_['heading_deg'] = np.rad2deg(df_['heading']) #np.rad2deg(np.arctan2(df_['pos_y_smoothed'].diff(), df_['pos_x_smoothed'].diff())) 
+    # calculate traveling direction
+    df_['traveling'] = np.arctan2(df_['pos_y_smoothed'].diff(), df_['pos_x_smoothed'].diff())
+    df_['traveling_deg'] = np.rad2deg(df_['traveling'])
 
     return df_
 
@@ -597,7 +595,6 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
     fly1, fly2 = util.rotate_coordinates_to_focal_fly(fly1, fly2)
 
     # add polar conversion
-    # FLIP y-axis? TODO check this
     polarcoords = util.cart2pol(fly2['rot_x'], fly2['rot_y']) 
     fly1['targ_pos_radius'] = polarcoords[0]
     fly1['targ_pos_theta'] = polarcoords[1]
@@ -619,14 +616,12 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
     fly2['target_vel'] = fly1_feat['vel']
     fly2['target_ang_vel'] = fly1_feat['ang_vel']
 
-
     # rotate coordinates so that fly1 is facing 0 degrees (East)
     # Assumes fly1 ORI goes from 0 to pi CCW, with y-axis NOT-inverted.
     # if using FlyTracker, trk_['ori'] = -1*trk_['ori']
     fly2, fly1 = util.rotate_coordinates_to_focal_fly(fly2, fly1)
 
     # add polar conversion
-    # FLIP y-axis? TODO check this
     polarcoords = util.cart2pol(fly1['rot_x'], fly1['rot_y']) 
     fly2['targ_pos_radius'] = polarcoords[0]
     fly2['targ_pos_theta'] = polarcoords[1]
@@ -657,9 +652,9 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
         print("... calculating theta error")
     # calculate theta error
     fly1 = calculate_theta_error(fly1, fly2)
-    fly1 = calculate_theta_error_from_heading(fly1, fly2)
+    fly1 = calculate_theta_error_from_traveling_direction(fly1, fly2)
     fly2 = calculate_theta_error(fly2, fly1)
-    fly2 = calculate_theta_error_from_heading(fly2, fly1)
+    fly2 = calculate_theta_error_from_traveling_direction(fly2, fly1)
 
 
     # recombine trk df
@@ -673,7 +668,7 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
         if verbose:
             print("... calculating relative velocity from feat df")
         f_list = []
-        for fi, df_ in feat_.groupby('id'):
+        for _, df_ in feat_.groupby('id'):
             df_ = get_relative_velocity(df_, win=1, 
                                 value_var='dist_to_other', time_var='sec')
             f_list.append(df_.reset_index(drop=True).iloc[:cop_ix])
