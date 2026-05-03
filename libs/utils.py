@@ -689,6 +689,36 @@ def load_ft_actions(found_actions_paths, split_end=False):
 
     return actions_df
 
+def load_and_assign_ft_actions(df, acq_dir, acq):
+    '''
+    Find, load, and assign FlyTracker action annotations to an existing tracks df.
+
+    Arguments:
+        df      -- transformed tracks dataframe with 'frame' column
+        acq_dir -- acquisition directory containing -actions.mat file
+        acq     -- acquisition name (for matching action file)
+
+    Returns:
+        df -- tracks dataframe with action and boutnum columns added
+    '''
+    # Find actions file
+    action_files = glob.glob(os.path.join(acq_dir, acq, '*-actions.mat'))
+    if len(action_files) == 0:
+        print(f"No actions file found in {acq_dir}, skipping.")
+        return df
+    if len(action_files) > 1:
+        print(f"Warning: multiple action files found, using first: {action_files[0]}")
+
+    # Load
+    actions = ft_actions_to_bout_df(action_files[0])
+    actions['acquisition'] = acq
+
+    # Assign to df
+    df = assign_action_frames_to_df(df, actions)
+    print(f"Actions assigned: {actions['action'].unique().tolist()}")
+
+    return df
+
 def assign_action_frames_to_df(df, actions):
     '''
     Assign action frames to df.
@@ -704,12 +734,14 @@ def assign_action_frames_to_df(df, actions):
         #print(action_name, bout_num)
         if action_name not in df.columns:
             print("Adding new action column: ", action_name)
-            df[action_name] = 0
-            df[f'{action_name}_boutnum'] = None
+            df[action_name] = -1
+            df[f'{action_name}_boutnum'] = -1
         # Assign all frames between start and end in df
         start, end = a_df['start'].item(), a_df['end'].item()
         frame_range = np.arange(start, end + 1)
-        df.loc[df['frame'].isin(frame_range), action_name] = 1
+        fly_id = int(a_df['id'].item())  # 0-indexed, directly from ft_actions_to_bout_df
+
+        df.loc[df['frame'].isin(frame_range), action_name] = fly_id
         df.loc[df['frame'].isin(frame_range), f'{action_name}_boutnum'] = bout_num
 
     return df
@@ -800,7 +832,6 @@ def split_condition_from_acquisition_name(df0):
     return newdf
 
 
-
 def load_aggregate_data_pkl(savedir, mat_type='df', included_species=None):
     '''
     Find all *feat.pkl (or *trk.pkl) files in savedir and load them into a single dataframe.
@@ -865,29 +896,31 @@ def ft_actions_to_bout_df(action_fpath):
     Returns:
         _description_
     '''
-    # mat['bouts'] is (n_flies, action_types)
-    # mat['bouts'][0, 10] gets bout start/end/likelihood for fly1, action #10
-    # mat['behs'] are the behavior names
 
     # load mat
     mat = scipy.io.loadmat(action_fpath)
-
-    # behavior names
     behs = [i[0][0] for i in mat['behs']]
+    n_flies = mat['bouts'].shape[0]
 
-    # aggregate into list
     b_list = []
-    for i, beh in enumerate(behs):
-        # get male action's 
-        if mat['bouts'][0, i].shape[1]==3:
-            b = mat['bouts'][0, i]
-            b_df = pd.DataFrame(data=b, columns=['start', 'end', 'likelihood'])
+    for fly_ix in range(n_flies):
+        for i, beh in enumerate(behs):
+            bouts = mat['bouts'][fly_ix, i]
+            if len(bouts) == 0:
+                continue
+            
+            b_df = pd.DataFrame(data=bouts, columns=['start', 'end', 'likelihood'])
             b_df['action'] = beh
-            b_df['id'] = 0
+            b_df['id'] = fly_ix  # already 0-indexed
             b_list.append(b_df)
 
-    boutdf = pd.concat(b_list)
+    if len(b_list) == 0:
+        print(f"Warning: no valid bouts found in {action_fpath}")
+        return pd.DataFrame(columns=['start', 'end', 'likelihood', 'action', 'id', 'boutnum'])
+
+    boutdf = pd.concat(b_list).reset_index(drop=True)
     boutdf['boutnum'] = boutdf.index.tolist()
+    boutdf['action'] = boutdf['action'].str.strip()
 
     return boutdf
 
