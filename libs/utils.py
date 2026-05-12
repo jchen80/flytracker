@@ -1615,6 +1615,19 @@ def load_flytracker_data(acq_dir, calib_is_upstream=False, fps=60,
             calib['h'] = float(np.nanmax(trk_['pos_y']))
         print("WARNING: estimated frame size from tracking data: w={}, h={}".format(
             calib['w'], calib['h']))
+        
+    def add_frame_sec(trk_, feat_, fps):
+        n_frames = len(trk_[trk_['id']==0])
+        n_flies = trk_['id'].nunique()
+
+        trk_['frame'] = list(range(n_frames)) * n_flies
+        feat_['frame'] = list(range(n_frames)) * n_flies
+        
+        trk_['sec'] = trk_['frame'] / fps
+        feat_['sec'] = feat_['frame'] / fps
+        return trk_, feat_
+
+    trk_, feat_ = add_frame_sec(trk_, feat_, calib['FPS'])
 
     return calib, trk_, feat_
 
