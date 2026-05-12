@@ -741,8 +741,9 @@ def assign_action_frames_to_df(df, actions):
         frame_range = np.arange(start, end + 1)
         fly_id = int(a_df['id'].item())  # 0-indexed, directly from ft_actions_to_bout_df
 
-        df.loc[df['frame'].isin(frame_range), action_name] = fly_id
-        df.loc[df['frame'].isin(frame_range), f'{action_name}_boutnum'] = bout_num
+        actor_mask = df['frame'].isin(frame_range) & (df['id'] == fly_id)
+        df.loc[actor_mask, action_name] = fly_id
+        df.loc[actor_mask, f'{action_name}_boutnum'] = bout_num
 
     return df
 
@@ -905,22 +906,22 @@ def ft_actions_to_bout_df(action_fpath):
     b_list = []
     for fly_ix in range(n_flies):
         for i, beh in enumerate(behs):
-            bouts = mat['bouts'][fly_ix, i]
-            if len(bouts) == 0:
-                continue
-            
-            b_df = pd.DataFrame(data=bouts, columns=['start', 'end', 'likelihood'])
-            b_df['action'] = beh
-            b_df['id'] = fly_ix  # already 0-indexed
-            b_list.append(b_df)
+            if mat['bouts'][fly_ix, i].shape[1]==3:
+                bouts = mat['bouts'][fly_ix, i]    
+                b_df = pd.DataFrame(data=bouts, columns=['start', 'end', 'likelihood'])
+                b_df['action'] = beh
+                b_df['id'] = fly_ix  # already 0-indexed
+                b_list.append(b_df)
 
     if len(b_list) == 0:
         print(f"Warning: no valid bouts found in {action_fpath}")
         return pd.DataFrame(columns=['start', 'end', 'likelihood', 'action', 'id', 'boutnum'])
 
     boutdf = pd.concat(b_list).reset_index(drop=True)
-    boutdf['boutnum'] = boutdf.index.tolist()
     boutdf['action'] = boutdf['action'].str.strip()
+
+    # assign boutnum within each action+fly group
+    boutdf['boutnum'] = boutdf.groupby('action').cumcount()
 
     return boutdf
 
