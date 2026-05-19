@@ -3,21 +3,19 @@ import numpy as np
 
 def _enforce_min_bout_duration(targets, min_bout_frames):
     '''
-    Enforce minimum bout duration on a sequence of target assignments.
-    Once a target is assigned, it must persist for at least min_bout_frames
-    before a switch to a new target is accepted. Short switches are reverted
-    to the previous stable target.
-
-    Edge case: if the first bout is too short, it is temporarily flagged as -2,
-    then forward-filled with the first stable target found after processing
-    the rest of the sequence.
+    Enforce minimum bout duration on a sequence of target assignments within
+    a single courtship bout. Short target runs are backward-filled with the
+    previous stable value. Short runs at the very start are flagged as -2 and
+    forward-filled with the first stable target found later in the sequence
+    (or -1 if no stable target exists). Call this per-boutnum so that
+    forward/backward fill cannot cross bout boundaries.
 
     Arguments:
         targets         -- np.array of integer target ids
-        min_bout_frames -- minimum number of frames a target must persist
+        min_bout_frames -- minimum number of frames a target run must span
 
     Returns:
-        enforced -- np.array of target ids with short switches removed.
+        enforced -- np.array of target ids with short runs removed.
     '''
     enforced = targets.copy().astype(int)
     n = len(enforced)
@@ -137,14 +135,24 @@ def assign_target_orientation(df, action_col='courtship',
         if len(best_targets) == 0:
             continue
 
-        frame_indices, raw_targets = zip(*best_targets)
-        raw_targets = np.array(raw_targets, dtype=float)
+        frame_to_raw = dict(best_targets)
+        boutnum_col_local = f'{action_col}_boutnum'
+        frame_to_target = {}
 
-        # enforce minimum bout duration instead of majority vote smoothing
-        enforced = _enforce_min_bout_duration(raw_targets, min_bout_frames)
-        enforced_int = [int(v) if not np.isnan(v) else -1 for v in enforced]
+        if boutnum_col_local in acting_df.columns:
+            # enforce per boutnum so forward/backward fill cannot cross bout boundaries
+            for _, bout_group in acting_df.drop_duplicates('frame').groupby(boutnum_col_local):
+                bout_frames = sorted(bout_group['frame'].tolist())
+                bout_raw = np.array([frame_to_raw[f] for f in bout_frames], dtype=float)
+                enforced = _enforce_min_bout_duration(bout_raw, min_bout_frames)
+                frame_to_target.update(zip(bout_frames,
+                                           [int(v) if not np.isnan(v) else -1 for v in enforced]))
+        else:
+            frame_indices, raw_targets = zip(*best_targets)
+            enforced = _enforce_min_bout_duration(np.array(raw_targets, dtype=float), min_bout_frames)
+            frame_to_target = dict(zip(frame_indices,
+                                       [int(v) if not np.isnan(v) else -1 for v in enforced]))
 
-        frame_to_target = dict(zip(frame_indices, enforced_int))
         df.loc[acting_mask, target_col] = df.loc[acting_mask, 'frame'].map(frame_to_target)
 
     # ── Switch detection ────────────────────────────────────────────────────
