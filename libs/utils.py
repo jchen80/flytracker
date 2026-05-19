@@ -741,6 +741,7 @@ def assign_action_frames_to_df(df, actions):
         frame_range = np.arange(start, end + 1)
         fly_id = int(a_df['id'].item())  # 0-indexed, directly from ft_actions_to_bout_df
 
+        # only assign non -1 values to frames corresponding to the correct actor fly id
         actor_mask = df['frame'].isin(frame_range) & (df['id'] == fly_id)
         df.loc[actor_mask, action_name] = fly_id
         df.loc[actor_mask, f'{action_name}_boutnum'] = bout_num
@@ -1367,9 +1368,9 @@ def load_calibration(curr_acq, calib_is_upstream=False):
             calib[k] = np.array(v)
 
     # DEBUG: show parsed calib before w/h fallback
-    print("DEBUG load_calibration parsed: {}".format(
-        {k: (v, type(v).__name__, v.shape if isinstance(v, np.ndarray) else '') 
-         for k, v in calib.items()}))
+    #print("DEBUG load_calibration parsed: {}".format(
+    #    {k: (v, type(v).__name__, v.shape if isinstance(v, np.ndarray) else '') 
+    #     for k, v in calib.items()}))
 
     # Estimate w/h if missing (empty arrays from some calibration files)
     w_missing = 'w' not in calib or (isinstance(calib['w'], np.ndarray) and calib['w'].size == 0)
