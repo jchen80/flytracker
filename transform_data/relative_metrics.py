@@ -369,9 +369,13 @@ def calculate_theta_error(f1, f2, xvar='pos_x', yvar='pos_y', fps=60.):
 
     f1['abs_ang_between'] = abs_ang # this is the line-of-sigh, line btween pursuer and target
     f1['theta_error'] = th_err
-    
+    f1['abs_theta_error'] = np.abs(f1['theta_error'])
+
     f1['theta_error_dt'] = pd.Series(np.unwrap(f1['theta_error'].interpolate().ffill().bfill())).diff() / f1['sec'].diff().mean()
+    f1['abs_theta_error_dt'] = pd.Series(np.unwrap(f1['abs_theta_error'].interpolate().ffill().bfill())).diff() / f1['sec'].diff().mean()
+
     f1['theta_error_deg'] = np.rad2deg(f1['theta_error'])
+    f1['abs_theta_error_deg'] = np.rad2deg(f1['abs_theta_error'])
 
     return f1
 
@@ -627,8 +631,8 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
     fly2['targ_rel_pos_y'] = fly1['rot_y']
     fly2['targ_rel_ori'] = fly1['rot_ori']
 
-    df = pd.concat([fly1, fly2], axis=0).reset_index(drop=True) #.so
-    return df
+    #df = pd.concat([fly1, fly2], axis=0).reset_index(drop=True)
+    #return df
 
     #% copulation index - TMP: fix this!
     if cop_ix is None or np.isnan(cop_ix):
@@ -657,7 +661,7 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
 
     # recombine trk df
     trk = pd.concat([fly1.iloc[:cop_ix], fly2.iloc[:cop_ix]], axis=0).reset_index(drop=True)#.sort_index()
-    trk['copulation'] = copulation
+    #trk['copulation'] = copulation
 
     # Get relative velocity and aggregate feat df
     if verbose:
@@ -671,7 +675,7 @@ def do_transformations_on_df(trk_, centroid_x, centroid_y,
                                 value_var='dist_to_other', time_var='sec')
             f_list.append(df_.reset_index(drop=True).iloc[:cop_ix])
         feat = pd.concat(f_list, axis=0).reset_index(drop=True) #.sort_index()
-        feat['copulation'] = copulation
+        #feat['copulation'] = copulation
         #print(trk.iloc[-1].name, feat.iloc[-1].name)
         df = pd.concat([trk, 
                 feat.drop(columns=[c for c in feat.columns if c in trk.columns])], axis=1)
