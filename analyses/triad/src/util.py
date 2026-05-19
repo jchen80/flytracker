@@ -234,36 +234,33 @@ def assign_target_nearest(df, action_col):
 
     return df
 
-def trim_df_at_copulation(df, copulation_col='copulation', boutnum_col='copulation_boutnum'):
+def find_copulation_frame(df, copulation_col='copulation', boutnum_col='copulation_boutnum'):
     '''
-    Trim df to exclude all frames after the start of the first copulation bout.
-    If no copulation is annotated, returns df unchanged.
+    Return the first frame of the first copulation bout, or None if not found.
 
     Arguments:
-        df -- single-acquisition tracks dataframe with copulation action column
-
-    Keyword Arguments:
-        copulation_col -- name of copulation action column (default: 'copulation')
-        boutnum_col    -- name of copulation boutnum column (default: 'copulation_boutnum')
-
-    Returns:
-        df -- trimmed dataframe
+        df -- dataframe with copulation action column and frame column
     '''
-    if copulation_col not in df.columns:
-        print("No copulation column found, returning df unchanged.")
-        return df
-
-    # find first frame of first copulation bout
+    if copulation_col not in df.columns or boutnum_col not in df.columns:
+        return None
     cop_rows = df[(df[copulation_col] != -1) & (df[boutnum_col].notna())]
-    if len(cop_rows) == 0:
-        print("No copulation bouts found, returning df unchanged.")
+    return int(cop_rows['frame'].min()) if len(cop_rows) > 0 else None
+
+
+def trim_at_copulation(df, copulation_col='copulation', boutnum_col='copulation_boutnum'):
+    '''
+    Trim df to exclude all frames after the start of the first copulation bout.
+    Returns df unchanged if no copulation is annotated.
+
+    Arguments:
+        df -- dataframe with copulation action column and frame column
+    '''
+    cop_frame = find_copulation_frame(df, copulation_col=copulation_col,
+                                      boutnum_col=boutnum_col)
+    if cop_frame is None:
         return df
-
-    first_cop_frame = int(cop_rows['frame'].min())
-    print(f"First copulation frame: {first_cop_frame} — trimming all frames after it.")
-
-    df = df[df['frame'] <= first_cop_frame].copy()
-    return df
+    print(f"First copulation frame: {cop_frame} — trimming all frames after it.")
+    return df[df['frame'] <= cop_frame].copy()
 
 def get_assay_ppm(assay_df, assay_type, ppm_colname="PPM", threshold=0.05):
     '''
