@@ -18,7 +18,7 @@ import transform_data.relative_metrics as rel
 from analyses.triad.src import multi_funcs as mf
 from analyses.triad.src import util as tutil
 from analyses.triad.src import data_io
-from analyses.triad.src.diagnose_ori_flips import (
+from analyses.triad.src.flip import (
     detect_flip_events, correct_flip_events, correct_mounting_nearest_ori,
 )
 
@@ -38,8 +38,8 @@ FOCAL_FLIES = {
 
 DELTA_ANGLE_DEG = 30  # for assigning courtship targets based on orientation
 MIN_COURTSHIP_BOUT_SEC = 2.0  # minimum duration of courtship bout to assign targets
-JUMP_THRESHOLD_RAD = 2.5  # for detecting sharp flips in orientation
-STABILITY_THRESHOLD_RAD = 0.2  # for confirming stability of new orientation after flip
+JUMP_THRESHOLD_RAD = 1.5  # for detecting sharp flips in orientation
+STABILITY_THRESHOLD_RAD = 0.8  # for confirming stability of new orientation after flip
 INTERACTIVE_FLIP_THRESHOLD_SEC = 4.0  # auto-detected events longer than this trigger interactive review
 
 # Helper functions 
