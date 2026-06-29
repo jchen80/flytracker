@@ -61,17 +61,21 @@ def save_processed_df(df, acq, calib, processedmat_dir):
     '''
     Save processed df for a single acquisition as parquet.
 
-    Bakes acquisition metadata (acquisition, triad_type, species, assay_type)
-    into the parquet so downstream loaders don't need to re-parse the filename.
+    Single source of truth for per-acquisition metadata: bakes all of it in here
+    (acquisition, triad_type, species, assay_type from the filename; PPM, FPS from
+    calibration) so the rest of the pipeline doesn't have to set these columns
+    piecemeal, and downstream loaders don't need to re-parse the filename.
 
     Arguments:
         df              -- processed tracks dataframe
         acq             -- acquisition name
-        calib           -- calibration dict (for potential future use, e.g. adding PPM to df)
+        calib           -- calibration dict; PPM and FPS are read from it
         processedmat_dir -- directory to save parquet files
     '''
     df = df.copy()
     df['acquisition'] = acq
+    df['PPM'] = calib['PPM']
+    df['FPS'] = calib['FPS']
     try:
         meta = parse_acquisition_metadata(acq)
         df['triad_type'] = meta['triad_type']

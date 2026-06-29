@@ -239,16 +239,13 @@ def main():
                 pair_df = rel.do_transformations_on_df(trk_, CENTROID_X, CENTROID_Y,
                                                        feat_=feat_, cop_ix=cop_ix,
                                                        flyid1=flyid1, flyid2=flyid2,
-                                                       get_relative_sizes=False)
+                                                       get_relative_sizes=False, fps=FPS)
                 pair_df['pair'] = pair_key
-                pair_df['acquisition'] = acq_key
-                pair_df['species'] = 'mel' if 'mel' in acq else 'yak'
                 pair_df_list.append(pair_df)
             df = pd.concat(pair_df_list, ignore_index=True)
 
-            # add metadata about calibration and acquisition to df for potential future use
-            df['PPM'] = calib_ch['PPM']
-            df['FPS'] = calib_ch['FPS']
+            # Per-acquisition metadata (acquisition, species, triad_type, assay_type,
+            # PPM, FPS) is baked in once, at save time, by data_io.save_processed_df.
 
             # ── Target annotation ─────────────────────────────────────────────
             if not has_actions:
