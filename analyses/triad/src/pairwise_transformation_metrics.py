@@ -97,7 +97,19 @@ def main():
         chambers = mf.split_by_chamber(trk, feat, calib)
         print(f"  {len(chambers)} chamber(s) detected")
 
-        for ch_idx, (trk_ch, feat_ch, calib_ch) in enumerate(chambers):
+        # Load actions file once per acquisition (global fly IDs across all chambers)
+        action_files = glob.glob(os.path.join(acq_dir, acq, '*-actions.mat'))
+        all_actions = util.ft_actions_to_bout_df(action_files[0]) if action_files else None
+        if all_actions is None:
+            print(f"  No actions file found in {acq_dir}.")
+        elif len(all_actions) == 0:
+            print(f"  Actions file loaded but contained no valid bouts "
+                  f"(check mat['bouts'][fly_ix, i].shape[1]==3 condition or v7.3 format).")
+        else:
+            print(f"  Actions loaded: fly IDs in file = {sorted(all_actions['id'].unique().tolist())}, "
+                  f"actions = {all_actions['action'].unique().tolist()}")
+
+        for ch_idx, (trk_ch, feat_ch, calib_ch, ch_flies) in enumerate(chambers):
             acq_key = f'{acq}_ch{ch_idx}' if len(chambers) > 1 else acq
 
             # Skip if already processed
