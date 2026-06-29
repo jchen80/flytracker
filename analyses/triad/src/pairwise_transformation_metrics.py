@@ -172,10 +172,31 @@ def main():
 
             # ── Action annotations ────────────────────────────────────────────
             num_columns_before = df_pairwise.shape[1]
-            df_pairwise = util.load_and_assign_ft_actions(df_pairwise, acq_dir, acq)
+
+            if all_actions is not None:
+                if ch_flies is not None:
+                    # multi-chamber: filter to this chamber's global fly IDs and
+                    # remap them to match the 0-based IDs used in df_pairwise
+                    ch_id_remap = {old_id: new_id for new_id, old_id in enumerate(ch_flies)}
+                    ch_actions = all_actions[all_actions['id'].isin(ch_flies)].copy()
+                    if len(ch_actions) == 0:
+                        all_ids = sorted(all_actions['id'].unique().tolist())
+                        print(f"  No actions for chamber {ch_idx} (ch_flies={ch_flies}) — skipping.")
+                        print(f"    Actions file fly IDs: {all_ids}")
+                        print(f"    Overlap: {[i for i in ch_flies if i in all_ids]}")
+                        ch_actions = None
+                    else:
+                        ch_actions['id'] = ch_actions['id'].map(ch_id_remap)
+                else:
+                    ch_actions = all_actions
+
+                if ch_actions is not None:
+                    df_pairwise = util.assign_action_frames_to_df(df_pairwise, ch_actions)
+                    print(f"  Actions assigned: {ch_actions['action'].unique().tolist()}")
+
             has_actions = df_pairwise.shape[1] > num_columns_before
             if not has_actions:
-                print("No new action columns added. Check if FT actions file exists and has expected columns.")
+                print("  No action columns for this chamber — skipping flip correction and target assignment.")
 
             # ── Trim at copulation before flip correction ─────────────────────
             cop_frame = tutil.find_copulation_frame(df_pairwise)
