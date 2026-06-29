@@ -70,11 +70,128 @@ def set_sns_style(style='dark', min_fontsize=6):
                     'figure.facecolor': 'white'}
         custom_style.update(font_styles)
         sns.set_style('white', rc=custom_style)
+    elif style in ('courtship'):
+        # Ruta-lab courtship scheme: dark grey (#262626) background, white text/axes.
+        custom_style = {
+                    'axes.labelcolor': 'white',
+                    'axes.edgecolor': 'white',
+                    'grid.color': '#555555',
+                    'xtick.color': 'white',
+                    'ytick.color': 'white',
+                    'text.color': 'white',
+                    'axes.facecolor': COURTSHIP_BG,
+                    'axes.grid': False,
+                    'figure.facecolor': COURTSHIP_BG,
+                    'savefig.facecolor': COURTSHIP_BG,
+                    'savefig.edgecolor': 'none'}
+        custom_style.update(font_styles)
+        sns.set_style('dark', rc=custom_style)
 
     pl.rcParams['savefig.dpi'] = 400
     pl.rcParams['figure.figsize'] = [6,4]
 
     pl.rcParams['svg.fonttype'] = 'none'
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Ruta-lab courtship color scheme (projector + triad modules)
+# ──────────────────────────────────────────────────────────────────────────
+COURTSHIP_BG = '#262626'                  # figure/axes background for style='courtship'
+
+# assay-type colors: species × chamber configuration (MMF = 1 male + 2 females
+# of the focal pair context; MFF as labelled in the triad/projector pipelines)
+ASSAY_TYPE_COLORS = {
+    'Dmel_MMF': '#8258E0',
+    'Dmel_MFF': '#197FE3',
+    'Dyak_MMF': '#CA2661',
+    'Dyak_MFF': '#FF6146',
+}
+# species colors when chamber configuration is not considered
+SPECIES_COLORS = {'Dmel': '#197FE3', 'Dyak': '#FF6146'}
+
+OLD_TARGET_COLOR = '#808080'              # medium grey: the old/previous switch target
+FOCAL_COLOR      = '#3A1A5E'              # dark purple: the focal male in allo trajectories
+NEUTRAL_GREY     = '#808080'              # generic grey (e.g. the 'all frames' baseline)
+
+
+def _blend(color, target, amount):
+    """Blend `color` toward `target` by `amount` in [0,1]; returns a hex string."""
+    c = np.array(mpl.colors.to_rgb(color))
+    t = np.array(mpl.colors.to_rgb(target))
+    return mpl.colors.to_hex((1.0 - amount) * c + amount * t)
+
+
+def darken(color, amount=0.15):
+    """Darken a color by blending it toward black."""
+    return _blend(color, 'black', amount)
+
+
+def lighten(color, amount=0.15):
+    """Lighten a color by blending it toward white."""
+    return _blend(color, 'white', amount)
+
+
+# retinal FOV motion, the requested base hues nudged a little darker for contrast
+PROGRESSIVE_COLOR = darken('#04AE3D', 0.18)   # progressive (target image moving forward)
+REGRESSIVE_COLOR  = darken('#E046D2', 0.18)   # regressive  (target image moving backward)
+
+
+def species_color(species, default='#444444'):
+    """Color for a species label ('Dmel'/'Dyak')."""
+    return SPECIES_COLORS.get(str(species), default)
+
+
+def assay_type_color(label, default=None):
+    """Color for an exact assay-type label ('Dmel_MMF', etc.), or `default`."""
+    return ASSAY_TYPE_COLORS.get(str(label), default)
+
+
+def courtship_color(label, default='#444444'):
+    """Resolve a group label to its scheme color.
+
+    Tries the exact assay-type key first ('Dmel_MFF'); otherwise falls back to the
+    species color if the label starts with a known species ('Dmel', 'Dmel_40',
+    'Dyak_inner', ...). Returns `default` if neither matches.
+    """
+    s = str(label)
+    if s in ASSAY_TYPE_COLORS:
+        return ASSAY_TYPE_COLORS[s]
+    for sp, c in SPECIES_COLORS.items():
+        if s.startswith(sp):
+            return c
+    return default
+
+
+def color_gradient(base, n, light=0.62, dark=0.34):
+    """`n` shades along `base`, ordered low → high (light tint → dark shade).
+
+    Use for an ordered numeric hue (LED intensity, stimulus speed) drawn in a
+    single species/assay color. The low end is `base` lightened toward white, the
+    high end `base` darkened toward black, passing through `base` near the middle.
+    """
+    if n <= 1:
+        return [base]
+    out = []
+    for i in range(n):
+        f = i / (n - 1)                  # 0 (low) .. 1 (high)
+        if f <= 0.5:
+            out.append(_blend(base, 'white', light * (1 - 2 * f)))
+        else:
+            out.append(_blend(base, 'black', dark * (2 * f - 1)))
+    return out
+
+
+def prog_regr_cmap():
+    """Diverging colormap: regressive (magenta) → light → progressive (green)."""
+    return mpl.colors.LinearSegmentedColormap.from_list(
+        'prog_regr', [REGRESSIVE_COLOR, '#F2F2F2', PROGRESSIVE_COLOR])
+
+
+def gradient_cmap(base, light=0.55, dark=0.34):
+    """Sequential colormap light tint → `base` → dark shade (for an ordered hue
+    such as LED intensity or stimulus speed, drawn in one species/assay color)."""
+    return mpl.colors.LinearSegmentedColormap.from_list(
+        'grad', [lighten(base, light), base, darken(base, dark)])
 
 
 # ticks
