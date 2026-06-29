@@ -57,14 +57,24 @@ def create_output_dirs(rootdir):
     return processedmat_dir, figdir
 
 def main():
-    # user specified rootdir as command line argument
-    if len(sys.argv) > 1:
-        rootdir = sys.argv[1]
+    if len(sys.argv) < 2:
+        print("Usage: python pairwise_transformation_metrics.py <rootdir> [acquisition]")
+        sys.exit(1)
+
+    rootdir = sys.argv[1]
+    target_acq = sys.argv[2] if len(sys.argv) >= 3 else None
 
     acquisition_parentdir = os.path.join(rootdir, 'raw_videos')
     # Get list of acquisitions (no hidden)
-    acqs = sorted([f for f in os.listdir(acquisition_parentdir) if not f.startswith('.')])
-    print(f"Found {len(acqs)} acquisitions")
+    all_acqs = sorted([f for f in os.listdir(acquisition_parentdir) if not f.startswith('.')])
+    if target_acq is not None:
+        if target_acq not in all_acqs:
+            print(f"Acquisition '{target_acq}' not found in {acquisition_parentdir}")
+            sys.exit(1)
+        acqs = [target_acq]
+    else:
+        acqs = all_acqs
+    print(f"Found {len(all_acqs)} acquisitions, processing {len(acqs)}")
     processedmat_dir, figdir = create_output_dirs(rootdir)
 
     # iterate over acquisitions
