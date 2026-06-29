@@ -374,6 +374,30 @@ def calculate_theta_error(f1, f2, xvar='pos_x', yvar='pos_y', fps=60.):
     f1['theta_error_dt'] = pd.Series(np.unwrap(f1['theta_error'].interpolate().ffill().bfill())).diff() / f1['sec'].diff().mean()
     f1['abs_theta_error_dt'] = pd.Series(np.unwrap(f1['abs_theta_error'].interpolate().ffill().bfill())).diff() / f1['sec'].diff().mean()
 
+    # Bearing rate due to the target fly's own motion only (focal fly held fixed):
+    #   theta_dot_target = (dx * v2y - dy * v2x) / (dx^2 + dy^2)
+    # where d = (dx, dy) = target - focal and v2 is the target's lab-frame velocity
+    # (finite-differenced position). This is the exact derivative of abs_ang_between
+    # with the focal fly's velocity set to zero, so it isolates the target's
+    # contribution to its angular position in the focal fly's field of view,
+    # excluding the focal fly's own translation and rotation. CCW-positive, matching
+    # the abs_ang_between (atan2) convention.
+    dt = f1['sec'].diff().mean()
+    dx = vec_between[xvar]
+    dy = vec_between[yvar]
+    v2x = f2[xvar].diff() / dt
+    v2y = f2[yvar].diff() / dt
+    f1['target_ang_vel_fov'] = (dx * v2y - dy * v2x) / (dx**2 + dy**2)
+    # Signed by focal heading via the chain rule d|u|/dt = sign(u)*du/dt with
+    # u = theta_error (ori held fixed): sign(th_err) * target_ang_vel_fov is the
+    # rate of change of |theta_error| due to the target's own motion.
+    # Positive = progressive (target motion increases |theta_error|, carrying it
+    # away from the heading axis — front-to-back optic flow); negative = regressive.
+    f1['target_ang_vel_fov_signed'] = np.sign(th_err) * f1['target_ang_vel_fov']
+    # Same quantities in deg/s (rad/s versions kept above).
+    f1['target_ang_vel_fov_deg'] = np.rad2deg(f1['target_ang_vel_fov'])
+    f1['target_ang_vel_fov_signed_deg'] = np.rad2deg(f1['target_ang_vel_fov_signed'])
+
     f1['theta_error_deg'] = np.rad2deg(f1['theta_error'])
     f1['abs_theta_error_deg'] = np.rad2deg(f1['abs_theta_error'])
 
