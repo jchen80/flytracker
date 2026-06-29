@@ -130,7 +130,7 @@ def main():
             # Process and transform
             # -----------------------------------------
             # Determine pairs to process: all pairs where at least one fly is focal
-            meta = data_io.parse_acquisition_metadata(acq)
+            meta = data_io.parse_acquisition_metadata(acq, ch_idx=ch_idx)
             triad_type = meta['triad_type']
             focal_fly_ids = FOCAL_FLIES.get(triad_type)
             all_fly_ids = sorted(trk_ch['id'].unique())
