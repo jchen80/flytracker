@@ -52,16 +52,20 @@ def visualize_one(df, avi_path, save_dir, acq, fps):
     '''Run all visualization steps for a single acquisition.'''
     # ── Video clips ──────────────────────────────────────────────────
     print(f"  Extracting bout clips...")
-    tputil.extract_bout_clips(df, avi_path, save_dir,
-                               mark_flies=True, max_frames=-1, n_clips=2,
-                               action_cols=[ACTION_COL])
+    #tputil.extract_bout_clips(df, avi_path, save_dir,
+    #                           mark_flies=True, max_frames=-1, n_clips=1,
+    #                           action_cols=[ACTION_COL])
 
-    switch_col = f'{ACTION_COL}_switch'
-    if switch_col in df.columns and (df[switch_col] == 1).any():
-        print(f"  Extracting switch clips...")
-        tputil.extract_switch_clips(df, avi_path, save_dir, action_col=ACTION_COL)
+    has_manual_switch = (
+        'switching' in df.columns
+        and ((df['switching'] == df['id']) & (df['switching'] != -1)).any()
+    )
+    if has_manual_switch:
+        print(f"  Extracting manual switch clips...")
+        tputil.extract_switch_clips(df, avi_path, save_dir, action_col=ACTION_COL,
+                                    switch_source='manual', slowdown=2)
     else:
-        print(f"  No switch events — skipping switch clips.")
+        print(f"  No manual switch events — skipping switch clips.")
 
     # ── Signal timecourse plots per bout ─────────────────────────────
     boutnum_col = f'{ACTION_COL}_boutnum'
@@ -83,30 +87,30 @@ def visualize_one(df, avi_path, save_dir, acq, fps):
     os.makedirs(signals_dir, exist_ok=True)
     print(f"  Plotting signals for {len(bout_nums)} bouts...")
 
-    # for bout_num in bout_nums:
-    #     bout_mask = df[boutnum_col] == bout_num
-    #     actor_id  = df.loc[bout_mask & (df[ACTION_COL] == df['id']), 'id']
-    #     actor_id  = int(actor_id.iloc[0]) if len(actor_id) > 0 else None
+    for bout_num in bout_nums:
+        bout_mask = df[boutnum_col] == bout_num
+        actor_id  = df.loc[bout_mask & (df[ACTION_COL] == df['id']), 'id']
+        actor_id  = int(actor_id.iloc[0]) if len(actor_id) > 0 else None
 
-    #     # route to the switch folder only for MANUAL (annotated) switches
-    #     has_manual_switch = (
-    #         actor_id is not None and
-    #         'switching' in df.columns and
-    #         (bout_mask & (df['switching'] == actor_id)).any()
-    #     )
+        # route to the switch folder only for MANUAL (annotated) switches
+        has_manual_switch = (
+            actor_id is not None and
+            'switching' in df.columns and
+            (bout_mask & (df['switching'] == actor_id)).any()
+        )
 
-    #     out_dir = switch_signals_dir if has_manual_switch else signals_dir
-    #     if has_manual_switch:
-    #         os.makedirs(switch_signals_dir, exist_ok=True)
+        out_dir = switch_signals_dir if has_manual_switch else signals_dir
+        if has_manual_switch:
+            os.makedirs(switch_signals_dir, exist_ok=True)
 
-    #     fig, _ = tputil.plot_bout_signals(df, bout_num,
-    #                                        action_col=ACTION_COL,
-    #                                        fps=fps,
-    #                                        mark_switches=True,
-    #                                        save_dir=out_dir,
-    #                                        acq=acq)
-    #     if fig is not None:
-    #         plt.close(fig)
+        fig, _ = tputil.plot_bout_signals(df, bout_num,
+                                           action_col=ACTION_COL,
+                                           fps=fps,
+                                           mark_switches=True,
+                                           save_dir=out_dir,
+                                           acq=acq)
+        if fig is not None:
+            plt.close(fig)
 
 
 def main():
@@ -151,11 +155,6 @@ def main():
 
         save_dir = os.path.join(figdir, acq)
         os.makedirs(save_dir, exist_ok=True)
-
-        # if the save_dir is not empty, skip to avoid overwriting existing outputs (can be re-run after fixing code)
-        if os.listdir(save_dir):
-            print(f"  WARNING: {save_dir} is not empty — skipping to avoid overwriting existing outputs.")
-            continue
 
         visualize_one(df, avi_path, save_dir, acq, fps)
 
