@@ -832,7 +832,8 @@ def plot_courtship_theta_vs_angvel_scatter(assay_dfs, sex_map, focal_flies_map=N
                                            lim=180, xlim_display=90,
                                            action_col='courtship', assay_colors=None,
                                            max_points=8000, yclip_percentile=99,
-                                           min_example_points=3000,
+                                           min_example_points=3000, vel_range=None,
+                                           vel_label=None, save_suffix='',
                                            save_dir=None, figsize=None):
     """Scatter of θ-error to the PURSUED target (deg) vs the focal's angular velocity
     (ang_vel_fly, deg/s) over all courtship frames, with a per-panel OLS regression.
@@ -848,8 +849,13 @@ def plot_courtship_theta_vs_angvel_scatter(assay_dfs, sex_map, focal_flies_map=N
     frames) is highlighted in the assay color, and the regression line is a lighter shade
     of it. Colors come from assay_colors keyed by the base species_triad, with MMF-1M
     lightened (matching the multiplicity plot). The example acquisition name is captioned
-    under each panel. Saves courtship_theta_vs_angvel_scatter.png.
+    under each panel. Saves courtship_theta_vs_angvel_scatter{save_suffix}.png.
+
+    vel_range=(lo, hi) (mm/s, either bound None) restricts to courtship frames where the
+    focal fly's own speed (vel_mm_s) is in that range — for the focal-velocity-binned
+    version; vel_label annotates the bin in the title.
     """
+    keep_cols = ['acquisition', 'theta_pursued', 'ang_vel_fly_degs']
     data = {}
     for key in sorted(assay_dfs):
         t = tutil.get_target_pair_fov(assay_dfs[key], sex_map,
@@ -860,11 +866,21 @@ def plot_courtship_theta_vs_angvel_scatter(assay_dfs, sex_map, focal_flies_map=N
         if c.empty:
             continue
         c['theta_pursued'] = np.where(c['court_x'] == 1, c['theta_x_deg'], c['theta_y_deg'])
-        c = c[['acquisition', 'theta_pursued', 'ang_vel_fly_degs']].dropna()
+        if vel_range is not None:                       # focal-speed bin filter
+            if 'vel_mm_s' not in c.columns:
+                continue
+            lo, hi = vel_range
+            m = c['vel_mm_s'].notna()
+            if lo is not None:
+                m &= c['vel_mm_s'] >= lo
+            if hi is not None:
+                m &= c['vel_mm_s'] <= hi
+            c = c[m]
+        c = c[keep_cols].dropna()
         if not c.empty:
             data[key] = c
     if not data:
-        print("[warn] no courtship ang_vel data for scatter")
+        print(f"[warn] no courtship ang_vel data for scatter{save_suffix}")
         return None, None
 
     # 2x3 grid: rows = species, cols = scenario in a fixed order
@@ -947,13 +963,15 @@ def plot_courtship_theta_vs_angvel_scatter(assay_dfs, sex_map, focal_flies_map=N
             # example-acquisition name as a caption UNDER each panel (not on the plot)
             if pick is not None:
                 ax.set_xlabel(f'ex: {pick}  (n={n_hl})', fontsize=6, color=color)
-    fig.suptitle('Courtship: θ-error to pursued target vs fly angular velocity',
-                 fontsize=13)
+    title = 'Courtship: θ-error to pursued target vs fly angular velocity'
+    if vel_label:
+        title += f'  (focal speed {vel_label} mm/s)'
+    fig.suptitle(title, fontsize=13)
     fig.supxlabel('θ-error to pursued target (deg)', fontsize=11)
     fig.supylabel('ang_vel_fly (deg/s)', fontsize=11)
 
     if save_dir is not None:
-        path = os.path.join(save_dir, 'courtship_theta_vs_angvel_scatter.png')
+        path = os.path.join(save_dir, f'courtship_theta_vs_angvel_scatter{save_suffix}.png')
         fig.savefig(path, dpi=150, bbox_inches='tight')
         print(f"Saved to {path}")
     return fig, axes
