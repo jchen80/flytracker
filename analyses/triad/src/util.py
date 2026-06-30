@@ -107,7 +107,7 @@ def assign_target_orientation(df, action_col='courtship',
     min_bout_frames = int(min_bout_sec * fps)
     fly_ids = sorted(df['id'].unique().tolist())
     target_col = f'{action_col}_target'
-    switch_col = f'{action_col}_switch'
+    switch_col = f'{action_col}_auto_switch'
     df[target_col] = -1
 
     for acting_fly_id in fly_ids:
@@ -140,6 +140,12 @@ def assign_target_orientation(df, action_col='courtship',
             other_id = other['_cand_id']
             other_theta = other['abs_theta_error_deg']
             other_dist = other['dist_to_other']
+
+            # If the best candidate has NaN theta error, orientation is unavailable
+            # for this frame — leave unassigned rather than picking arbitrarily.
+            if pd.isna(primary_theta):
+                best_targets.append((frame_idx, np.nan))
+                continue
 
             # distance tiebreaker: if better-oriented fly is farther,
             # only keep it if orientation advantage exceeds delta_theta
