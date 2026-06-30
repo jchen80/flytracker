@@ -1051,3 +1051,176 @@ def plot_courtship_angvel_slope_per_acquisition(assay_dfs, sex_map, focal_flies_
         fig.savefig(path, dpi=150, bbox_inches='tight')
         print(f"Saved to {path}")
     return fig, ax
+
+
+# Focal-speed bins (mm/s) for the θ→ang-vel slope-vs-speed plots; last bound None = open.
+ANGVEL_SLOPE_VEL_BINS = [(0, 4), (4, 8), (8, 12), (12, 16), (16, None)]
+
+
+def plot_courtship_angvel_slope_by_velocity(assay_dfs, sex_map, focal_flies_map=None,
+                                            mode='pooled', vel_bins=None, xlim_display=60,
+                                            vel_source='focal', action_col='courtship',
+                                            assay_colors=None, min_points=500, save_dir=None,
+                                            save_suffix='', figsize=None):
+    """Turn-toward-target slope as a function of linear speed (focal fly's own, or the
+    pursued target's).
+
+    The slope (1/s) is the OLS coefficient of fly angular velocity (ang_vel_fly_degs,
+    deg/s) regressed on θ-error to the PURSUED target (deg), over courtship frames with
+    |θ| ≤ xlim_display — the same definition as plot_courtship_theta_vs_angvel_scatter.
+    Frames are binned by speed per `vel_bins` (default 0–4, 4–8, 8–12, 12–16, 16+ mm/s).
+    One panel per species (shared y-axis), x = speed bin, one line per assay scenario
+    {MFF, MMF-1M, MMF-2M}.
+
+    vel_source:
+      'focal'  -- bin by the focal fly's own speed (vel_mm_s).
+      'target' -- bin by the PURSUED target's speed (looked up from each fly's own `vel`).
+
+    mode:
+      'pooled'  -- one slope per (species, assay, bin) fit over ALL in-range frames
+                   pooled across acquisitions; error bar = 1 SE of the fitted slope.
+      'per_acq' -- a slope fit per (species, assay, bin, acquisition) with ≥ min_points
+                   in-range frames; every acquisition is a point (jittered), with the
+                   across-acquisition mean ± SEM overlaid and means connected across bins.
+
+    Saves courtship_angvel_slope_by_velocity_{mode}_{vel_source}{save_suffix}.png.
+    """
+    if vel_source not in ('focal', 'target'):
+        raise ValueError(f"vel_source must be 'focal' or 'target', got {vel_source!r}")
+    vel_bins = vel_bins or ANGVEL_SLOPE_VEL_BINS
+    scen_order = ['MFF', 'MMF_1M', 'MMF_2M']
+    bin_labels = [f'{lo:g}–{hi:g}' if hi is not None else f'{lo:g}+' for lo, hi in vel_bins]
+    vel_word = 'pursued target' if vel_source == 'target' else 'focal'
+
+    # in-range courtship points (|θ|≤xlim) per requested assay scenario. `binvel` is the
+    # speed (mm/s) used for the velocity binning — the focal fly's or the pursued target's.
+    pts = {}
+    for key in sorted(assay_dfs):
+        if key.split('_', 1)[-1] not in scen_order:
+            continue
+        df0 = assay_dfs[key]
+        t = tutil.get_target_pair_fov(df0, sex_map,
+                                      focal_flies_map=focal_flies_map, action_col=action_col)
+        if t.empty or 'ang_vel_fly_degs' not in t.columns or 'vel_mm_s' not in t.columns:
+            continue
+        c = t[(t['court_x'] == 1) | (t['court_y'] == 1)].copy()
+        if c.empty:
+            continue
+        c['theta_pursued'] = np.where(c['court_x'] == 1, c['theta_x_deg'], c['theta_y_deg'])
+        if vel_source == 'target':
+            if 'vel' not in df0.columns:
+                continue
+            # speed of the pursued target = each fly's own `vel`, joined on its id
+            c['_tid'] = np.where(c['court_x'] == 1, c['x_id'], c['y_id'])
+            vl = (df0[['acquisition', 'frame', 'id', 'vel']].dropna()
+                  .drop_duplicates(['acquisition', 'frame', 'id'])
+                  .rename(columns={'id': '_tid', 'vel': 'binvel'}))
+            c = c.merge(vl, on=['acquisition', 'frame', '_tid'], how='left')
+        else:
+            c['binvel'] = c['vel_mm_s']
+        c = c[['acquisition', 'theta_pursued', 'ang_vel_fly_degs', 'binvel']].dropna()
+        c = c[np.abs(c['theta_pursued']) <= xlim_display]
+        if not c.empty:
+            pts[key] = c
+    if not pts:
+        print(f"[warn] no courtship ang_vel/speed data for slope-by-velocity ({mode})")
+        return None, None
+
+    species = sorted({k.split('_', 1)[0] for k in pts})
+    scenarios = [s for s in scen_order if any(f'{sp}_{s}' in pts for sp in species)]
+
+    def _bin_mask(v, lohi):
+        lo, hi = lohi
+        m = v >= lo
+        return m & (v < hi) if hi is not None else m
+
+    # results[key] = per-bin: pooled -> {slope, se, n}|None ; per_acq -> np.array(acq slopes)
+    results, allv = {}, []
+    for sp in species:
+        for sc in scenarios:
+            key = f'{sp}_{sc}'
+            if key not in pts:
+                continue
+            d, perbin = pts[key], []
+            for lohi in vel_bins:
+                b = d[_bin_mask(d['binvel'].to_numpy(), lohi)]
+                if mode == 'pooled':
+                    if len(b) > 2 and np.ptp(b['theta_pursued']) > 0:
+                        r = linregress(b['theta_pursued'], b['ang_vel_fly_degs'])
+                        perbin.append({'slope': float(r.slope), 'se': float(r.stderr),
+                                       'n': len(b)})
+                        allv += [r.slope - r.stderr, r.slope + r.stderr]
+                    else:
+                        perbin.append(None)
+                else:
+                    acc = [float(linregress(g['theta_pursued'], g['ang_vel_fly_degs']).slope)
+                           for _, g in b.groupby('acquisition')
+                           if len(g) >= min_points and np.ptp(g['theta_pursued']) > 0]
+                    perbin.append(np.array(acc))
+                    allv += acc
+            results[key] = perbin
+    if not allv:
+        print(f"[warn] no slopes for slope-by-velocity ({mode})")
+        return None, None
+
+    lo_y, hi_y = float(np.nanmin(allv)), float(np.nanmax(allv))
+    pad = 0.08 * ((hi_y - lo_y) or 1.0)
+    ylim = (lo_y - pad, hi_y + pad)
+
+    x = np.arange(len(vel_bins))
+    offs = (np.linspace(-0.2, 0.2, len(scenarios)) if mode == 'per_acq'
+            else np.zeros(len(scenarios)))
+    fig, axes = plt.subplots(1, len(species), squeeze=False, sharey=True,
+                             figsize=figsize or (4.8 * len(species), 4.8))
+    axes = axes[0]
+    rng = np.random.default_rng(0)
+    for ai, sp in enumerate(species):
+        ax = axes[ai]
+        for si, sc in enumerate(scenarios):
+            key = f'{sp}_{sc}'
+            if key not in results:
+                continue
+            base = (assay_colors or {}).get(f"{sp}_{sc.split('_')[0]}") or '#888888'
+            color = putil.lighten(base, 0.45) if sc.endswith('_1M') else base
+            xs, perbin = x + offs[si], results[key]
+            if mode == 'pooled':
+                ys = [c['slope'] if c else np.nan for c in perbin]
+                es = [c['se'] if c else np.nan for c in perbin]
+                ax.errorbar(xs, ys, yerr=es, color=color, marker='o', ms=6, lw=2,
+                            capsize=3, label=sc, zorder=3)
+            else:
+                means = []
+                for bi, acc in enumerate(perbin):
+                    if len(acc):
+                        jit = (rng.random(len(acc)) - 0.5) * 0.12
+                        ax.scatter(xs[bi] + jit, acc, s=20, color=color, alpha=0.55,
+                                   edgecolor='none', zorder=2)
+                        m = float(np.nanmean(acc))
+                        se = (float(np.nanstd(acc, ddof=1) / np.sqrt(len(acc)))
+                              if len(acc) > 1 else 0.0)
+                        ax.errorbar(xs[bi], m, yerr=se, color=color, marker='o', ms=7,
+                                    capsize=4, elinewidth=1.5, lw=0, zorder=4)
+                        means.append(m)
+                    else:
+                        means.append(np.nan)
+                ax.plot(xs, means, color=color, lw=2, label=sc, zorder=3)
+        ax.axhline(0, color='0.5', lw=0.8, ls='--', alpha=0.7)
+        ax.set_xticks(x)
+        ax.set_xticklabels(bin_labels, fontsize=8)
+        ax.set_xlabel(f'{vel_word} speed bin (mm/s)')
+        ax.set_title(sp, fontsize=11)
+        ax.set_ylim(ylim)
+        ax.legend(fontsize=8, title='assay')
+    axes[0].set_ylabel('slope: ang_vel_fly vs θ-error to pursued (1/s)')
+    ttl = 'per-acquisition fits' if mode == 'per_acq' else 'pooled fit'
+    fig.suptitle(f'Turn-toward-target slope vs {vel_word} speed ({ttl}, |θ|≤{xlim_display:g}°)',
+                 fontsize=13)
+    plt.tight_layout()
+
+    if save_dir is not None:
+        path = os.path.join(
+            save_dir,
+            f'courtship_angvel_slope_by_velocity_{mode}_{vel_source}{save_suffix}.png')
+        fig.savefig(path, dpi=150, bbox_inches='tight')
+        print(f"Saved to {path}")
+    return fig, axes
