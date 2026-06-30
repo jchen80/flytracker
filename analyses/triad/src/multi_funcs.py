@@ -77,12 +77,18 @@ def split_by_chamber(trk, feat, calib):
                          for ci in range(n_chambers)]
                 ch_idx = int(np.argmin(dists))
                 fly_to_chamber[fid] = ch_idx
-                print(f"  WARNING: fly {fid} outside all ROI bounding boxes — "
-                      f"assigned to nearest chamber {ch_idx}.")
+                print(f"  WARNING: fly {fid} (pos {med_x:.1f},{med_y:.1f}) outside all "
+                      f"ROI bounding boxes — assigned to nearest chamber {ch_idx}.")
             else:
                 fly_to_chamber[fid] = 0
                 print(f"  WARNING: fly {fid} outside all ROI bounding boxes and "
                       f"no centroids available — defaulting to chamber 0.")
+
+    # Diagnostic: show which global IDs landed in each chamber
+    for ch_idx in range(n_chambers):
+        ch_flies_diag = sorted([fid for fid, ch in fly_to_chamber.items() if ch == ch_idx])
+        print(f"  Chamber {ch_idx}: global fly IDs {ch_flies_diag} "
+              f"-> local IDs {list(range(len(ch_flies_diag)))}")
 
     chambers = []
     for ch_idx in range(n_chambers):
@@ -94,6 +100,7 @@ def split_by_chamber(trk, feat, calib):
         trk_ch = trk[trk['id'].isin(ch_flies)].copy()
         feat_ch = feat[feat['id'].isin(ch_flies)].copy()
 
+        # Remap global IDs to 0-based local IDs (sorted global order)
         id_remap = {old_id: new_id for new_id, old_id in enumerate(ch_flies)}
         trk_ch['id'] = trk_ch['id'].map(id_remap)
         feat_ch['id'] = feat_ch['id'].map(id_remap)
