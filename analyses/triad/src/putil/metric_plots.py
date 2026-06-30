@@ -24,6 +24,8 @@ from ._helpers import _build_condition_panels, _compute_metric_histogram, _exclu
 _METRIC_UNITS = {
     'dist_to_other': 'mm',
     'dist_to_other_body_adj': 'mm',
+    'abs_theta_error_deg': 'deg',
+    'theta_error_deg': 'deg',
 }
 
 
