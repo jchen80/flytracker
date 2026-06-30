@@ -166,7 +166,10 @@ def plot_action_rate_across_assays(assay_dfs, action_col, fps=None,
     n_per_assay = plot_data.groupby('assay_type')['acquisition'].nunique()
     ax.set_xticklabels([f'{a}\n(n={n_per_assay.get(a, 0)})' for a in assay_order])
     ax.set_xlabel('assay type')
-    ylabel = f'bouts per {norm_minutes} min' if norm_minutes is not None else 'bout count'
+    if norm_minutes is None:
+        ylabel = 'bout count'
+    else:
+        ylabel = 'bouts per min' if norm_minutes == 1 else f'bouts per {norm_minutes} min'
     ax.set_ylabel(ylabel)
     ax.set_title(f'{action_col}: {ylabel}')
     plt.tight_layout()
