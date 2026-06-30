@@ -1354,6 +1354,10 @@ def load_calibration(curr_acq, calib_is_upstream=False):
         ndata = {n: mdata[n][0, 0] for n in mdtype.names}
 
     all_fields = dict((k, v[0]) if len(v)>0 else (k, v) for k, v in ndata.items())
+    # go back and get everything for "centroids" fieldname if n_chambers > 1
+    if 'centroids' in all_fields and all_fields['n_chambers'] > 1:
+        all_fields['centroids'] = mdata['centroids']
+
     calib = {}
     for k, v in all_fields.items():
         if k not in fieldnames:
