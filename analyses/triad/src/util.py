@@ -126,7 +126,12 @@ def assign_target_orientation(df, action_col='courtship',
         best_targets = []
         for frame_idx, frame_group in acting_df.groupby('frame'):
             if len(frame_group) < 2:
-                best_targets.append((frame_idx, frame_group.iloc[0]['_cand_id']))
+                # Only one candidate — require valid theta error; NaN ori gives
+                # no reliable orientation signal so leave this frame unassigned (-1).
+                if pd.isna(frame_group.iloc[0]['abs_theta_error_deg']):
+                    best_targets.append((frame_idx, np.nan))
+                else:
+                    best_targets.append((frame_idx, frame_group.iloc[0]['_cand_id']))
                 continue
 
             frame_group = frame_group.sort_values('abs_theta_error_deg')
