@@ -436,7 +436,8 @@ def plot_switch_rate_across_assays(assay_dfs, action_col='courtship', fps=60,
     ax.set_xlabel('assay type')
 
     if norm_minutes is not None:
-        ylabel = f'switches per {norm_minutes} min courtship'
+        per = 'min' if norm_minutes == 1 else f'{norm_minutes} min'
+        ylabel = f'switches per {per} courtship'
     else:
         ylabel = 'total switches'
     ax.set_ylabel(ylabel)
