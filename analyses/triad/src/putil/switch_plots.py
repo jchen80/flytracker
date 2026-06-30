@@ -945,6 +945,101 @@ def plot_switch_target_ang_vel_fov_delta_across_assays(
     return fig, axes
 
 
+def plot_switch_delta_metrics_for_case(case_df, metrics, assay_colors=None,
+                                       case_label='', figsize=None):
+    '''
+    For one switch case, a grid: rows = metrics, columns =
+    [Δ (new−old) histogram, assays overlaid | paired old→new slope per assay].
+
+    Arguments:
+        case_df -- per-switch rows for a single switch_case, with an 'assay_type'
+                   column and, for each metric, old_<col>/new_<col>/delta_<col>.
+        metrics -- list of dicts: {'old','new','delta','label'} (column names + label).
+
+    Keyword Arguments:
+        assay_colors -- dict assay_type -> color (default: courtship palette)
+        case_label   -- suptitle suffix (e.g. 'new_lower')
+        figsize      -- default scales with the grid
+
+    Returns:
+        fig, axes  (or None, None if empty)
+    '''
+    if case_df is None or len(case_df) == 0 or not metrics:
+        return None, None
+    assays = sorted(case_df['assay_type'].dropna().unique().tolist())
+    if not assays:
+        return None, None
+    colors = (assay_colors if assay_colors is not None
+              else {a: putil.courtship_color(a) for a in assays})
+
+    n_rows, n_cols = len(metrics), 1 + len(assays)
+    if figsize is None:
+        figsize = (4.3 * n_cols, 3.8 * n_rows)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
+
+    for r, m in enumerate(metrics):
+        oc, nc, dc, label = m['old'], m['new'], m['delta'], m['label']
+
+        # ── col 0: Δ histogram, assays overlaid ──────────────────────────────
+        ax = axes[r][0]
+        vals_by = {a: case_df.loc[case_df['assay_type'] == a, dc].dropna()
+                   for a in assays}
+        pooled = (pd.concat(list(vals_by.values())) if vals_by
+                  else pd.Series(dtype=float))
+        lim = float(pooled.abs().quantile(0.98)) if len(pooled) else 1.0
+        lim = lim if lim > 0 else 1.0
+        edges = np.linspace(-lim, lim, 31)
+        handles = []
+        for a in assays:
+            v = vals_by.get(a)
+            if v is None or len(v) == 0:
+                continue
+            c = colors.get(a, putil.courtship_color(a))
+            ax.hist(v.clip(-lim, lim), bins=edges, density=True, histtype='bar',
+                    color=c, edgecolor='none', alpha=0.2)
+            # fitted Gaussian KDE line (no histogram outline)
+            if len(v) > 1 and float(v.std()) > 0:
+                xs = np.linspace(-lim, lim, 200)
+                ax.plot(xs, gaussian_kde(v)(xs), color=c, linewidth=2.0)
+            ax.axvline(float(v.mean()), color=c, linewidth=1.2, linestyle=':', alpha=0.8)
+            handles.append(Patch(facecolor=c, edgecolor=c,
+                                 label=f'{a} (n={len(v)}, μ={v.mean():.2g})'))
+        ax.axvline(0, color='white', linestyle='--', linewidth=1.0, alpha=0.7)
+        ax.set_xlim(-lim, lim)
+        ax.set_xlabel(f'new − old  {label}')
+        ax.set_ylabel('density')
+        ax.set_title(f'Δ {label}')
+        if handles:
+            ax.legend(handles=handles, fontsize=7)
+
+        # ── cols 1..: paired old→new slope per assay ─────────────────────────
+        paired = pd.concat([case_df[oc], case_df[nc]]).dropna()
+        ylim = ((0, float(paired.quantile(0.98)))
+                if len(paired) and paired.min() >= 0 else None)
+        for ci, a in enumerate(assays):
+            ax = axes[r][ci + 1]
+            sub = case_df[case_df['assay_type'] == a].dropna(subset=[oc, nc])
+            c = colors.get(a, putil.courtship_color(a))
+            for _, row in sub.iterrows():
+                ax.plot([0, 1], [row[oc], row[nc]], color=c, alpha=0.3, linewidth=0.8)
+            if len(sub) > 0:
+                ax.plot([0, 1], [sub[oc].mean(), sub[nc].mean()],
+                        color=c, linewidth=2.5, zorder=5)
+                ax.scatter([0, 1], [sub[oc].mean(), sub[nc].mean()],
+                           color=c, s=55, zorder=6)
+            ax.set_xticks([0, 1])
+            ax.set_xticklabels(['old', 'new'])
+            ax.set_xlim(-0.4, 1.4)
+            ax.set_ylabel(label if ci == 0 else '')
+            ax.set_title(f'{a} (n={len(sub)})')
+            if ylim is not None:
+                ax.set_ylim(*ylim)
+
+    fig.suptitle(f'Switch deltas — {case_label}', fontsize=13)
+    plt.tight_layout()
+    return fig, axes
+
+
 def plot_switch_target_ang_vel_fov_vs_theta_error_across_assays(
         traj_assay_dfs,
         t_rel_points=((-0.2, '−0.2 s'), (-0.1, '−0.1 s'), (0.0, 'at switch')),
