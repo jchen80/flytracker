@@ -110,23 +110,67 @@ def split_by_chamber(trk, feat, calib):
         calib_ch['n_chambers'] = 1
         calib_ch['rois'] = np.array(rois[ch_idx])
         if centroids is not None:
-            calib_ch['centroids'] = np.array(centroids[ch_idx])
+            calib_ch['centroids'] = centroids[ch_idx].copy()
 
-        chambers.append((trk_ch, feat_ch, calib_ch))
+        chambers.append((trk_ch, feat_ch, calib_ch, ch_flies))
 
     return chambers
 
 
 # Transform data
+def compute_dist_body_adj(pos_x, pos_y, ori, major_ax, minor_ax,
+                          other_pos_x, other_pos_y, other_ori,
+                          other_major_ax, other_minor_ax,
+                          pix_per_mm=1):
+    """
+    Minimum gap between two fly ellipses, in mm (or pixels if pix_per_mm=1).
+
+    Each fly is modeled as an ellipse whose major axis is aligned with its
+    orientation. For each fly, the radius in the direction toward the other
+    fly is computed as:
+        r = (a * b) / sqrt((a * sin(alpha))^2 + (b * cos(alpha))^2)
+    where a = major_ax/2, b = minor_ax/2, alpha = angle between fly's major
+    axis and the line connecting the two centroids.
+
+    Returns max(0, centroid_dist - r_focal - r_other) / pix_per_mm.
+    NaN is propagated wherever axis lengths or orientations are NaN.
+    """
+    dx = other_pos_x - pos_x
+    dy = other_pos_y - pos_y
+    d  = np.sqrt(dx**2 + dy**2)
+
+    a1, b1 = major_ax / 2.0, minor_ax / 2.0
+    a2, b2 = other_major_ax / 2.0, other_minor_ax / 2.0
+
+    angle_to_other = np.arctan2(dy, dx)
+
+    alpha1 = angle_to_other - ori
+    denom1 = np.sqrt((a1 * np.sin(alpha1))**2 + (b1 * np.cos(alpha1))**2)
+    r1 = np.where(denom1 > 0, (a1 * b1) / denom1, np.nan)
+
+    alpha2 = angle_to_other + np.pi - other_ori
+    denom2 = np.sqrt((a2 * np.sin(alpha2))**2 + (b2 * np.cos(alpha2))**2)
+    r2 = np.where(denom2 > 0, (a2 * b2) / denom2, np.nan)
+
+    return np.maximum(0.0, d - r1 - r2) / pix_per_mm
+
+
 def add_pairwise_metrics(trk_, feat_, calib, flyid1=0, flyid2=1):
     """
     Adds the following pairwise metrics to feat_:
-    - dist_to_other: distance to the other fly
-    - facing_angle: angle between fly's orientation and the line connecting the two flies
+    - dist_to_other: distance to the other fly (centroid-to-centroid, mm)
+    - dist_to_other_body_adj: ellipse-edge-to-ellipse-edge distance (mm);
+      accounts for fly body size by subtracting each fly's ellipse radius
+      in the direction toward the other fly
+    - facing_angle: angle between fly's orientation and the line connecting
+      the two flies
 
-    Assumes that trk_ and feat_ are already filtered to only contain the two fly ids of interest (flyid1 and flyid2).
+    Assumes that trk_ and feat_ are already filtered to only contain the
+    two fly ids of interest (flyid1 and flyid2).
     """
     ppm = calib.get('PPM', 1)
+    has_ellipse = all(c in trk_.columns for c in ('major_axis_len', 'minor_axis_len'))
+
     for fid, oid in [(flyid1, flyid2), (flyid2, flyid1)]:
         f_trk = trk_[trk_['id']==fid]
         o_trk = trk_[trk_['id']==oid]
@@ -135,6 +179,18 @@ def add_pairwise_metrics(trk_, feat_, calib, flyid1=0, flyid2=1):
             o_trk['pos_x'].values, o_trk['pos_y'].values,
             pix_per_mm=ppm)
         feat_.loc[feat_['id']==fid, 'dist_to_other'] = dist
+
+        if has_ellipse:
+            dist_adj = compute_dist_body_adj(
+                f_trk['pos_x'].values,      f_trk['pos_y'].values,
+                f_trk['ori'].values,        f_trk['major_axis_len'].values,
+                f_trk['minor_axis_len'].values,
+                o_trk['pos_x'].values,      o_trk['pos_y'].values,
+                o_trk['ori'].values,        o_trk['major_axis_len'].values,
+                o_trk['minor_axis_len'].values,
+                pix_per_mm=ppm)
+            feat_.loc[feat_['id']==fid, 'dist_to_other_body_adj'] = dist_adj
+
         facing_angle = util.compute_facing_angle(
             f_trk['ori'].values, f_trk['pos_x'].values, f_trk['pos_y'].values,
             o_trk['pos_x'].values, o_trk['pos_y'].values)
