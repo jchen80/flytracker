@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Ellipse, Patch, Rectangle
-from scipy.stats import linregress
+from scipy.stats import linregress, gaussian_kde
 import cv2
 from adjustText import adjust_text
 import glob
@@ -164,7 +164,7 @@ def plot_switch_vectors_across_assays(vector_dfs, ppm_dict,
                                        old_color='tomato', new_color='dodgerblue',
                                        assay_colors=None,
                                        event_alpha=0.45, event_lw=0.8,
-                                       scale_percentile=None,
+                                       scale_percentile=None, vectors_only=False,
                                        save_dir=None, figsize=None):
     '''
     Show old and new target positions at courtship switch time.
@@ -172,6 +172,10 @@ def plot_switch_vectors_across_assays(vector_dfs, ppm_dict,
       Row 1 — old target positions only (open circles)
       Row 2 — new target positions only (filled circles)
       Row 3 — both connected by thin gray lines
+
+    When vectors_only=True, instead draws just row 3 as a standalone single row:
+    old (grey open circles) + new (assay-coloured) positions connected by thin
+    grey lines, one panel per assay.
 
     Arguments:
         vector_dfs -- dict mapping assay_type to DataFrame from
@@ -196,7 +200,7 @@ def plot_switch_vectors_across_assays(vector_dfs, ppm_dict,
     if n_cols == 0:
         return None, np.empty((3, 0))
     if figsize is None:
-        figsize = (5 * n_cols, 14)
+        figsize = (5 * n_cols, 5.5) if vectors_only else (5 * n_cols, 14)
 
     # ── Pre-pass: filter and compute global scale ─────────────────────────────
     assay_data = {}
@@ -242,6 +246,40 @@ def plot_switch_vectors_across_assays(vector_dfs, ppm_dict,
         if col_idx == 0:
             ax.set_ylabel(f'{row_label}\ny (mm)')
         ax.set_title(f'{assay_types[col_idx]}  ({_count_label(n, n_acq)})')
+
+    # ── vectors-only mode: standalone row-3 (old + new + connecting line) ─────
+    if vectors_only:
+        fig = plt.figure(figsize=figsize)
+        axes_row = []
+        for col_idx, assay_type in enumerate(assay_types):
+            ax = fig.add_subplot(1, n_cols, col_idx + 1)
+            axes_row.append(ax)
+            if assay_data[assay_type] is None:
+                ax.set_visible(False)
+                continue
+            old_x, old_y, new_x, new_y, n, n_acq = assay_data[assay_type]
+            this_new_color = (assay_colors.get(assay_type, new_color)
+                              if assay_colors is not None else new_color)
+            segs = [[(ox, oy), (nx, ny)]
+                    for ox, oy, nx, ny in zip(old_x, old_y, new_x, new_y)]
+            ax.add_collection(LineCollection(segs, colors='gray',
+                              linewidths=event_lw, alpha=event_alpha, zorder=1))
+            ax.scatter(old_x, old_y, s=16, facecolors='none', edgecolors=old_color,
+                       alpha=min(event_alpha * 2, 1.0), linewidths=1.0, zorder=2,
+                       label='old target')
+            ax.scatter(new_x, new_y, s=16, color=this_new_color,
+                       alpha=min(event_alpha * 2, 1.0), linewidths=0, zorder=2,
+                       label='new target')
+            _style_cart(ax, col_idx, n, n_acq, 'old → new')
+            if col_idx == 0:
+                ax.legend(fontsize=7, loc='upper right')
+        fig.suptitle('Target positions at switch: old → new (egocentric)', fontsize=12)
+        plt.tight_layout()
+        if save_dir is not None:
+            savepath = os.path.join(save_dir, 'switch_target_oldnew_lines.png')
+            fig.savefig(savepath, dpi=150, bbox_inches='tight')
+            print(f"Saved to {savepath}")
+        return fig, np.array(axes_row).reshape(1, n_cols)
 
     # ── Subplots ──────────────────────────────────────────────────────────────
     fig = plt.figure(figsize=figsize)
@@ -1085,10 +1123,14 @@ def plot_switch_positions_colored_by_metric_across_assays(
         t_rel_points=((-1.0, '1 s before'), (0.0, 'at switch')),
         cmap=None, vlim_percentile=100, scale_percentile=None,
         event_lw=0.5, event_alpha=0.4,
-        figsize=None):
+        single_row=False, figsize=None):
     '''
     Three-row Cartesian plot of old/new target positions, colored by a metric, at
     one or more time points relative to the switch.
+
+    When single_row=True, draws only row 3 (old + new positions connected by lines,
+    each coloured by its metric) as a standalone single row, one panel per
+    (time-point × assay) — typically called with a single t_rel_point at the switch.
 
     traj_assay_dfs must come from tutil.get_switch_new_target_trajectories (grouped
     by assay_type): each df holds, per event, a window of frames around the switch
@@ -1152,7 +1194,7 @@ def plot_switch_positions_colored_by_metric_across_assays(
     if n_cols == 0:
         return None, np.empty((3, 0))
     if figsize is None:
-        figsize = (5 * n_cols, 14)
+        figsize = (5 * n_cols, 5.5) if single_row else (5 * n_cols, 14)
 
     pos_cols = ['x_ego', 'y_ego', 'old_x_ego', 'old_y_ego']
 
@@ -1237,6 +1279,47 @@ def plot_switch_positions_colored_by_metric_across_assays(
     col_specs = [(t_idx, t_label, assay_type)
                  for t_idx, (_t, t_label) in enumerate(t_rel_points)
                  for assay_type in assay_types]
+
+    # ── single-row mode: standalone row-3 (old + new + line, colored) ─────────
+    if single_row:
+        fig = plt.figure(figsize=figsize)
+        axes_row = []
+        last_sc = None
+        for col_idx, (t_idx, t_label, assay_type) in enumerate(col_specs):
+            ax = fig.add_subplot(1, n_cols, col_idx + 1)
+            axes_row.append(ax)
+            sf = panel_data.get((t_idx, assay_type))
+            if sf is None or len(sf) == 0:
+                ax.set_visible(False)
+                continue
+            n, n_acq = len(sf), _n_acq(sf)
+            c_old = sf[old_color_col].values if old_color_col in sf.columns else None
+            c_new = sf[new_color_col].values if new_color_col in sf.columns else None
+            segs = [[(ox, oy), (nx, ny)] for ox, oy, nx, ny in
+                    zip(sf['_ox'], sf['_oy'], sf['_nx'], sf['_ny'])]
+            ax.add_collection(LineCollection(segs, colors='gray',
+                              linewidths=event_lw, alpha=event_alpha, zorder=1))
+            if c_old is not None:
+                ax.scatter(sf['_ox'], sf['_oy'], c=c_old, cmap=cmap, vmin=-vlim,
+                           vmax=vlim, s=18, alpha=0.75, linewidths=0, marker='s', zorder=3)
+            if c_new is not None:
+                last_sc = ax.scatter(sf['_nx'], sf['_ny'], c=c_new, cmap=cmap, vmin=-vlim,
+                                     vmax=vlim, s=18, alpha=0.75, linewidths=0, marker='o', zorder=4)
+            title = f'{assay_type}  ({_count_label(n, n_acq)})'
+            if n_times > 1:
+                title = f'{t_label}\n{title}'
+            _style(ax, col_idx, 'old → new', title)
+        fig.suptitle(f'Target old → new at switch, colored by {new_color_col}', fontsize=12)
+        plt.tight_layout()
+        if last_sc is not None:
+            fig.subplots_adjust(right=0.90)
+            cbar_ax = fig.add_axes([0.92, 0.15, 0.012, 0.70])
+            cb = fig.colorbar(last_sc, cax=cbar_ax, label=_metric_label(new_color_col))
+            cb.ax.text(0.5, 1.03, 'progressive', ha='center', va='bottom',
+                       transform=cb.ax.transAxes, fontsize=7, color='#00BB44')
+            cb.ax.text(0.5, -0.03, 'regressive', ha='center', va='top',
+                       transform=cb.ax.transAxes, fontsize=7, color='#CC00CC')
+        return fig, np.array(axes_row).reshape(1, n_cols)
 
     # ── Subplots ──────────────────────────────────────────────────────────────
     fig = plt.figure(figsize=figsize)
