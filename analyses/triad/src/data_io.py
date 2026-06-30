@@ -10,6 +10,28 @@ _SPECIES_MAP = {
     'dyak': 'Dyak', 'yak': 'Dyak',
 }
 
+
+def resolve_data_dir(rootdir, verbose=True):
+    '''
+    Pick the data directory the plot scripts should load from.
+
+    Prefers reviewed_mats/ (curated = processed + manifests, built by
+    apply_corrections.py). Falls back to processed_mats/ when reviewed_mats/ has
+    not been built yet, so plotting never hard-fails on a fresh tree.
+
+    Returns the chosen directory path.
+    '''
+    reviewed  = os.path.join(rootdir, 'reviewed_mats')
+    processed = os.path.join(rootdir, 'processed_mats')
+    if glob.glob(os.path.join(reviewed, '*.parquet')):
+        if verbose:
+            print(f"Loading from reviewed_mats/ (curated)")
+        return reviewed
+    if verbose:
+        print("reviewed_mats/ not found — loading processed_mats/. "
+              "Run apply_corrections.py to build reviewed_mats/.")
+    return processed
+
 def parse_acquisition_metadata(acq, ch_idx=None):
     '''
     Parse acquisition name into metadata fields.
