@@ -1011,3 +1011,202 @@ def plot_courtship_multiplicity_fraction(assay_dfs, focal_flies_map, triad='MMF'
         fig.savefig(savepath, dpi=150, bbox_inches='tight')
         print(f"Saved to {savepath}")
     return fig, ax
+
+
+# ── metric-vs-metric relationship (e.g. distance vs |θ error|) ────────────────
+
+def _courtship_xy_table(adf, x_metric, y_metric, action_col, focal_flies):
+    """Courtship target-pair frames for the focal flies → DataFrame[acquisition, x, y].
+    Uses the same focal-fly + action + target-pair filtering as the 'target-only' metric
+    condition, so x/y are read on the focal↔pursued-target pair row each courtship frame."""
+    filt = _filter_by_focal_fly(adf, focal_flies)
+    tp = _filter_to_target_pairs(_select_action_frames(filt, action_col), action_col)
+    if tp is None or len(tp) == 0:
+        return None
+    cols = ['acquisition', x_metric, y_metric]
+    if any(c not in tp.columns for c in cols):
+        return None
+    return tp[cols].dropna()
+
+
+def _assay_species_scenario_grid(keys):
+    """(species_rows, scenario_cols) ordering for split/4-way assay keys
+    ('Dmel_MFF', 'Dmel_MMF_1M', ...)."""
+    species = sorted({k.split('_', 1)[0] for k in keys})
+    order = ['MFF', 'MMF', 'MMF_1M', 'MMF_2M', 'MMF_2M_F']
+    scens = [s for s in order if any(f'{sp}_{s}' in keys for sp in species)]
+    scens += sorted({k.split('_', 1)[1] for k in keys if '_' in k} - set(scens))
+    return species, scens
+
+
+def _xy_assay_data(assay_dfs, x_metric, y_metric, action_col, focal_flies_map):
+    data = {}
+    for key in sorted(assay_dfs):
+        adf = assay_dfs[key]
+        triad = adf['triad_type'].iloc[0] if 'triad_type' in adf.columns else None
+        focal = focal_flies_map.get(triad) if focal_flies_map else None
+        t = _courtship_xy_table(adf, x_metric, y_metric, action_col, focal)
+        if t is not None and len(t) > 2:
+            data[key] = t
+    return data
+
+
+def _bin_edges(xmin, xmax, n_bins, bin_width):
+    """Bin edges/centers: fixed-width (round) edges from 0 when bin_width is given
+    (e.g. 1 mm → 0, 1, 2, …), else n_bins equal-width bins over [xmin, xmax]."""
+    if bin_width:
+        hi = np.ceil(xmax / bin_width) * bin_width
+        edges = np.arange(0.0, hi + bin_width * 0.5, bin_width)
+        if len(edges) < 2:
+            edges = np.array([0.0, float(bin_width)])
+    else:
+        edges = np.linspace(xmin, xmax, n_bins + 1)
+    return edges, 0.5 * (edges[:-1] + edges[1:])
+
+
+def plot_metric_xy_scatter_across_assays(assay_dfs, x_metric='dist_to_other_body_adj',
+                                         y_metric='abs_theta_error_deg', action_col='courtship',
+                                         focal_flies_map=None, assay_colors=None,
+                                         x_lim=None, y_lim=None, n_bins=15, bin_width=None,
+                                         max_points=8000,
+                                         save_dir=None, save_name=None, figsize=None):
+    """Per-assay scatter of y_metric vs x_metric over courtship target-pair frames (focal
+    flies), with a binned-mean trend line overlaid. One panel per assay (species rows ×
+    scenario cols). Points light grey (subsampled); trend = mean y per x-bin in the assay
+    color. Saves '<y>_vs_<x>_scatter.png' (or save_name)."""
+    data = _xy_assay_data(assay_dfs, x_metric, y_metric, action_col, focal_flies_map)
+    if not data:
+        print(f"[warn] no courtship data for {y_metric} vs {x_metric} scatter")
+        return None, None
+    if assay_colors is None:
+        assay_colors = {k: putil.courtship_color(k) for k in data}
+    allx = np.concatenate([d[x_metric].to_numpy() for d in data.values()])
+    ally = np.concatenate([d[y_metric].to_numpy() for d in data.values()])
+    xmin, xmax = (x_lim if x_lim else (min(0.0, float(np.nanpercentile(allx, 1))),
+                                       float(np.nanpercentile(allx, 99))))
+    ymin, ymax = (y_lim if y_lim else (min(0.0, float(np.nanpercentile(ally, 1))),
+                                       float(np.nanpercentile(ally, 99))))
+    edges, centers = _bin_edges(xmin, xmax, n_bins, bin_width)
+    n_bins = len(edges) - 1
+    species, scens = _assay_species_scenario_grid(list(data))
+    nrows, ncols = len(species), len(scens)
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize or (3.5 * ncols, 3.2 * nrows),
+                             squeeze=False, sharex=True, sharey=True, constrained_layout=True)
+    rng = np.random.default_rng(0)
+    for i, sp in enumerate(species):
+        for j, sc in enumerate(scens):
+            ax = axes[i][j]
+            d = data.get(f'{sp}_{sc}')
+            if d is None:
+                ax.axis('off')
+                continue
+            x = d[x_metric].to_numpy(); y = d[y_metric].to_numpy()
+            color = assay_colors.get(f'{sp}_{sc}', putil.courtship_color(f'{sp}_{sc}'))
+            xs, ys = x, y
+            if len(x) > max_points:
+                idx = rng.choice(len(x), max_points, replace=False)
+                xs, ys = x[idx], y[idx]
+            ax.scatter(xs, ys, s=4, alpha=0.12, color='0.7', edgecolors='none',
+                       rasterized=True, zorder=1)
+            bi = np.digitize(x, edges) - 1
+            mean = np.array([y[bi == b].mean() if (bi == b).any() else np.nan
+                             for b in range(n_bins)])
+            ax.plot(centers, mean, color=color, lw=2.4, zorder=3)
+            ax.set_xlim(xmin, xmax); ax.set_ylim(ymin, ymax)
+            ax.set_title(f'{sp}_{sc}\n(n={len(x)})', fontsize=9)
+            if i == nrows - 1:
+                ax.set_xlabel(_metric_label(x_metric))
+            if j == 0:
+                ax.set_ylabel(_metric_label(y_metric))
+    fig.suptitle(f'{_metric_label(y_metric)} vs {_metric_label(x_metric)} during courtship '
+                 f'(grey = frames; line = binned mean)', fontsize=13)
+    if save_dir is not None:
+        name = save_name or f'{y_metric}_vs_{x_metric}_scatter.png'
+        path = os.path.join(save_dir, name)
+        fig.savefig(path, dpi=150, bbox_inches='tight')
+        print(f"Saved to {path}")
+    return fig, axes
+
+
+def plot_metric_xy_binned_across_assays(assay_dfs, x_metric='dist_to_other_body_adj',
+                                        y_metric='abs_theta_error_deg', action_col='courtship',
+                                        focal_flies_map=None, assay_colors=None,
+                                        x_lim=None, n_bins=15, bin_width=None, min_acq=2,
+                                        style='band', save_dir=None, save_name=None, figsize=None):
+    """Binned x_metric → mean y_metric ± SEM ACROSS ACQUISITIONS (acquisition = unit of
+    replication). One panel per species (shared x/y axes), with that species' scenarios
+    overlaid. Courtship target-pair frames, focal flies. Per bin: each acquisition's mean y,
+    then mean ± SEM across acquisitions (bins with < min_acq acquisitions dropped).
+
+    style -- 'band' (mean line + shaded ±SEM, the default) or 'points' (individual
+    per-acquisition points jittered around each bin + a mean ±SEM error bar, scenarios
+    dodged sideways). Saves '<y>_vs_<x>_binned.png' for 'band' / '..._binned_points.png'
+    for 'points' (or save_name)."""
+    data = _xy_assay_data(assay_dfs, x_metric, y_metric, action_col, focal_flies_map)
+    if not data:
+        print(f"[warn] no courtship data for {y_metric} vs {x_metric} binned plot")
+        return None, None
+    if assay_colors is None:
+        assay_colors = {k: putil.courtship_color(k) for k in data}
+    allx = np.concatenate([d[x_metric].to_numpy() for d in data.values()])
+    xmin, xmax = (x_lim if x_lim else (min(0.0, float(np.nanpercentile(allx, 1))),
+                                       float(np.nanpercentile(allx, 99))))
+    edges, centers = _bin_edges(xmin, xmax, n_bins, bin_width)
+    n_bins = len(edges) - 1
+    species, scens = _assay_species_scenario_grid(list(data))
+
+    ncols = len(species)
+    fig, axes = plt.subplots(1, ncols, figsize=figsize or (5.0 * ncols, 5.0),
+                             squeeze=False, sharex=True, sharey=True, constrained_layout=True)
+    axes = axes[0]
+    rng = np.random.default_rng(0)
+    binwidth = edges[1] - edges[0]
+    # for 'points': dodge each scenario sideways within a bin so they don't overlap
+    offsets = ((np.arange(len(scens)) - (len(scens) - 1) / 2)
+               * (0.55 * binwidth / max(len(scens), 1)))
+    for ax, sp in zip(axes, species):
+        for k, sc in enumerate(scens):
+            key = f'{sp}_{sc}'
+            d = data.get(key)
+            if d is None:
+                continue
+            d = d.copy()
+            d['_bin'] = np.digitize(d[x_metric].to_numpy(), edges) - 1
+            d = d[(d['_bin'] >= 0) & (d['_bin'] < n_bins)]
+            if d.empty:
+                continue
+            per_acq = d.groupby(['acquisition', '_bin'])[y_metric].mean().reset_index()
+            stat = per_acq.groupby('_bin')[y_metric].agg(['mean', 'sem', 'count'])
+            stat = stat[stat['count'] >= min_acq]
+            if stat.empty:
+                continue
+            m = stat['mean'].to_numpy()
+            se = np.nan_to_num(stat['sem'].to_numpy())
+            color = assay_colors.get(key, putil.courtship_color(key))
+            label = f'{sc} (n_acq={per_acq["acquisition"].nunique()})'
+            if style == 'points':
+                xoff = offsets[k]
+                pa = per_acq[per_acq['_bin'].isin(stat.index)]
+                jit = (rng.random(len(pa)) - 0.5) * 0.25 * binwidth
+                ax.scatter(centers[pa['_bin'].to_numpy()] + xoff + jit, pa[y_metric].to_numpy(),
+                           s=10, color=color, alpha=0.4, edgecolors='none', zorder=2)
+                ax.errorbar(centers[stat.index.to_numpy()] + xoff, m, yerr=se, color=color,
+                            fmt='o-', ms=4, lw=1.5, capsize=3, zorder=3, label=label)
+            else:                                            # 'band'
+                c = centers[stat.index.to_numpy()]
+                ax.fill_between(c, m - se, m + se, color=color, alpha=0.2, lw=0, zorder=2)
+                ax.plot(c, m, color=color, lw=2, marker='o', ms=3, zorder=3, label=label)
+        ax.set_xlim(xmin, xmax)
+        ax.set_title(sp, fontsize=11)
+        ax.set_xlabel(_metric_label(x_metric))
+        ax.legend(fontsize=7)
+    axes[0].set_ylabel(f'mean {_metric_label(y_metric)}')
+    fig.suptitle(f'{_metric_label(y_metric)} vs {_metric_label(x_metric)} during courtship '
+                 f'(mean ± SEM across acquisitions)', fontsize=13)
+    if save_dir is not None:
+        suf = '_points' if style == 'points' else ''
+        name = save_name or f'{y_metric}_vs_{x_metric}_binned{suf}.png'
+        path = os.path.join(save_dir, name)
+        fig.savefig(path, dpi=150, bbox_inches='tight')
+        print(f"Saved to {path}")
+    return fig, axes
