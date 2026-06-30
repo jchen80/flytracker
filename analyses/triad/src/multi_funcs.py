@@ -26,12 +26,34 @@ def split_by_chamber(trk, feat, calib):
     n_chambers = int(calib.get('n_chambers', 1))
     rois = calib.get('rois')
 
+    # Normalize rois to (n_chambers, 4) — calibration.mat sometimes stores it
+    # as a 1D object array of (1, 4) subarrays rather than a clean 2D array.
+    if isinstance(rois, np.ndarray) and rois.dtype == object:
+        try:
+            rois = np.vstack([np.asarray(r).flatten() for r in rois])
+        except Exception:
+            pass
+
     if n_chambers <= 1 or rois is None or (isinstance(rois, np.ndarray) and rois.ndim < 2):
-        return [(trk, feat, calib)]
+        return [(trk, feat, calib, None)]
 
     # rois: (n_chambers, 4) -> [y, x, h, w] per chamber
     # centroids: (n_chambers, 2) -> [x, y] per chamber
     centroids = calib.get('centroids')
+    if centroids is not None:
+        centroids = np.asarray(centroids)
+        if centroids.dtype == object:
+            try:
+                centroids = np.vstack([np.asarray(c).flatten() for c in centroids])
+            except Exception:
+                centroids = None
+        if centroids is not None:
+            try:
+                centroids = centroids.reshape(n_chambers, 2)
+            except ValueError:
+                print(f"  WARNING: could not reshape centroids {centroids.shape} to "
+                      f"({n_chambers}, 2) — falling back to ROI centres.")
+                centroids = None
 
     fly_ids = sorted(trk['id'].unique())
     fly_to_chamber = {}
