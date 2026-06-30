@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import libs.plotting as putil
 from analyses.triad.src.data_io import parse_acquisition_metadata
 from analyses.triad.src import util as tutil
+from analyses.triad.src import corrections as C
 
 PLOT_STYLE  = 'dark'
 REVIEW_LOG  = 'fp_review_log.json'
@@ -739,9 +740,13 @@ def main():
 
                 if confirmed:
                     print(f"\n{len(confirmed)} event(s) confirmed as real switches.")
-                    tutil.apply_confirmed_fp_switches(confirmed, processedmat_dir)
-                    print("  Run review_switch_targets.py to update courtship_target for the new switches.")
-                    tutil.update_actions_mat_switching(confirmed, args.rootdir)
+                    cdir = C.corrections_dir(args.rootdir)
+                    written = C.write_switches_manifest_from_confirmed(cdir, confirmed)
+                    for acq, n in sorted(written.items()):
+                        print(f"  {acq}: {n} confirmed switch(es) in manifest")
+                    print(f"  Wrote switch manifest(s) → {cdir}")
+                    print("  Next: review_switch_targets.py, then apply_corrections.py "
+                          "to rebuild reviewed_mats.")
                 else:
                     print("\nNo events confirmed — no files updated.")
 

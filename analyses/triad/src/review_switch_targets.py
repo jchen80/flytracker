@@ -11,9 +11,10 @@ keys, then press a number key to set the target fly ID:
     q (in Phase 1) — skip this switch entirely
     space — play / pause
 
-Corrected parquets are written to {rootdir}/processed_mats_corrected/.
-The original automated assignment is preserved in 'courtship_target_pre_correction'.
-Already-corrected files are skipped unless --redo is passed.
+Target reassignments are written to {rootdir}/corrections/{acq}.targets.json
+(the durable manifest). processed_mats/ is NOT modified; run apply_corrections.py
+to rebuild reviewed_mats/ from processed_mats + the manifests.
+Already-reviewed acquisitions (manifest present) are skipped unless --redo is passed.
 
 Usage:
     python analyses/triad/src/review_switch_targets.py <rootdir> [--redo]
@@ -29,7 +30,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
 from analyses.triad.src.data_io import parse_acquisition_metadata
-from analyses.triad.src import util as tutil
+from analyses.triad.src import corrections as C
 
 PAD_SEC    = 2.0
 ACTION_COL = 'courtship'
@@ -200,7 +201,7 @@ def _review_switch(cap, n_video_frames, fps, switch_frame,
 
 # ── Per-acquisition review ────────────────────────────────────────────────────
 
-def _review_acquisition(acq_key, df, video_path, processedmat_dir, backup_dir):
+def _review_acquisition(acq_key, df, video_path, cdir):
     try:
         import cv2
     except ImportError:
@@ -219,15 +220,12 @@ def _review_acquisition(acq_key, df, video_path, processedmat_dir, backup_dir):
     print(f'  Building frame lookup ({len(df)} rows, fps={fps})...')
     lookup = _build_lookup(df)
 
-    # Back up original parquet before any modification
-    backup_path = os.path.join(backup_dir, f'{acq_key}.parquet')
-    if not os.path.exists(backup_path):
-        df.to_parquet(backup_path, index=False)
-        print(f'  Backed up original → {backup_path}')
-
-    # Keep pre-correction column in-df for easy comparison
-    if 'courtship_target_pre_correction' not in df.columns:
-        df['courtship_target_pre_correction'] = df[TARGET_COL].copy()
+    # Overlay confirmed FP switches (sole-source: they live in the switches
+    # manifest, not the parquet) so the GUI reviews their target too. In-memory only.
+    events = C.read_switches_manifest(cdir, acq_key)
+    if events:
+        C.apply_switch_events(df, events)
+        print(f'  Overlaid {len(events)} confirmed switch(es) from manifest.')
 
     # Collect focal flies that have switching annotations
     sw_any = df[(df['switching'] != -1) & df['switching'].notna()]
@@ -295,13 +293,10 @@ def _review_acquisition(acq_key, df, video_path, processedmat_dir, backup_dir):
     cap.release()
     cv2.destroyAllWindows()
 
-    for focal_id, corrections in all_corrections.items():
-        tutil.apply_switch_corrections_to_target(df, focal_id, corrections,
-                                                 action_col=ACTION_COL)
-
-    out_path = os.path.join(processedmat_dir, f'{acq_key}.parquet')
-    df.to_parquet(out_path, index=False)
-    print(f'  Saved corrected → {out_path}')
+    C.write_targets_manifest(cdir, acq_key, all_corrections, action_col=ACTION_COL)
+    n_corr = sum(len(v) for v in all_corrections.values())
+    print(f'  Wrote {n_corr} correction(s) → {C.targets_path(cdir, acq_key)}')
+    print('  Run apply_corrections.py to rebuild reviewed_mats.')
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -310,12 +305,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('rootdir', help='Root directory containing processed_mats/ and raw_videos/')
     parser.add_argument('--redo', action='store_true',
-                        help='Re-review acquisitions that already have a backup')
+                        help='Re-review acquisitions that already have a targets manifest')
     args = parser.parse_args()
 
     processedmat_dir = os.path.join(args.rootdir, 'processed_mats')
-    backup_dir       = os.path.join(args.rootdir, 'processed_mats_backup')
-    os.makedirs(backup_dir, exist_ok=True)
+    cdir = C.corrections_dir(args.rootdir)
+    os.makedirs(cdir, exist_ok=True)
 
     parquets = sorted(glob.glob(os.path.join(processedmat_dir, '*.parquet')))
     if not parquets:
@@ -337,15 +332,18 @@ def main():
             skipped += 1
             continue
 
-        backup_path = os.path.join(backup_dir, f'{acq_key}.parquet')
-        if not args.redo and os.path.exists(backup_path):
-            print(f'{acq_key}: already corrected (backup exists) — skipping (use --redo to redo)')
+        if not args.redo and os.path.exists(C.targets_path(cdir, acq_key)):
+            print(f'{acq_key}: already reviewed (manifest exists) — skipping (use --redo to redo)')
             continue
 
         df = pd.read_parquet(fp)
 
-        if 'switching' not in df.columns or not (df['switching'] != -1).any():
-            print(f'{acq_key}: no switching annotations — skipping')
+        # Confirmed FP switches live in the switches manifest, not the parquet, so
+        # consult both when deciding whether there's anything to review.
+        has_manual_sw = 'switching' in df.columns and (df['switching'] != -1).any()
+        has_conf_sw   = C.read_switches_manifest(cdir, acq_key) is not None
+        if not (has_manual_sw or has_conf_sw):
+            print(f'{acq_key}: no switching annotations or confirmed switches — skipping')
             skipped += 1
             continue
 
@@ -363,7 +361,7 @@ def main():
         n_sw = (df[(df['switching'] != -1) & df['switching'].notna()]
                 .drop_duplicates(['frame', 'switching']).shape[0])
         print(f'\n{acq_key}  ({n_sw} switch event(s))')
-        _review_acquisition(acq_key, df.copy(), video_path, processedmat_dir, backup_dir)
+        _review_acquisition(acq_key, df.copy(), video_path, cdir)
 
     if skipped:
         print(f'\n({skipped} parquet(s) skipped)')
