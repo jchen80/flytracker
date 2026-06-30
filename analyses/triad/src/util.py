@@ -1,3 +1,13 @@
+import os
+import re
+import glob
+from collections import defaultdict
+
+import os
+import re
+import glob
+from collections import defaultdict
+
 import pandas as pd
 import numpy as np
 
@@ -10,26 +20,36 @@ def _enforce_min_bout_duration(targets, min_bout_frames):
     (or -1 if no stable target exists). Call this per-boutnum so that
     forward/backward fill cannot cross bout boundaries.
 
+    NaN values (frames where orientation was unavailable) are left untouched —
+    they pass through as NaN and are not subject to min-bout enforcement.
+
     Arguments:
-        targets         -- np.array of integer target ids
+        targets         -- np.array of float target ids (may contain NaN)
         min_bout_frames -- minimum number of frames a target run must span
 
     Returns:
-        enforced -- np.array of target ids with short runs removed.
+        enforced -- np.array of float target ids with short runs removed.
     '''
-    enforced = targets.copy().astype(int)
+    enforced = targets.copy()   # keep as float; NaN-safe
     n = len(enforced)
     i = 0
 
     while i < n:
         current = enforced[i]
 
+        if np.isnan(current):
+            # NaN frames pass through unchanged — skip the whole NaN run
+            j = i
+            while j < n and np.isnan(enforced[j]):
+                j += 1
+            i = j
+            continue
+
         j = i
-        while j < n and enforced[j] == current:
+        while j < n and not np.isnan(enforced[j]) and enforced[j] == current:
             j += 1
 
         bout_len = j - i
-
         if bout_len < min_bout_frames:
             if i > 0:
                 enforced[i:j] = enforced[i - 1]
@@ -39,12 +59,11 @@ def _enforce_min_bout_duration(targets, min_bout_frames):
         i = j
 
     # forward fill any flagged frames at start with first stable target
-    if (enforced == -2).any():
-        first_stable = next((v for v in enforced if v not in (-1, -2)), None)
-        if first_stable is not None:
-            enforced[enforced == -2] = first_stable
-        else:
-            enforced[enforced == -2] = -1
+    neg2_mask = (enforced == -2)
+    if neg2_mask.any():
+        first_stable = next(
+            (v for v in enforced if not np.isnan(v) and v not in (-1, -2)), None)
+        enforced[neg2_mask] = first_stable if first_stable is not None else -1
 
     return enforced
 
