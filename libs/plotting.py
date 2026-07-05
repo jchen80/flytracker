@@ -39,6 +39,10 @@ def set_sns_style(style='dark', min_fontsize=6):
 
     pl.rcParams['axes.linewidth'] = 0.5
 
+    # foreground/contrast color for the active theme (see fg_color())
+    global _CURRENT_FG
+    _CURRENT_FG = 'black' if style in ('white', 'courtship_light') else 'white'
+
     if style=='dark':
         custom_style = {
                     'axes.labelcolor': 'white',
@@ -86,6 +90,22 @@ def set_sns_style(style='dark', min_fontsize=6):
                     'savefig.edgecolor': 'none'}
         custom_style.update(font_styles)
         sns.set_style('dark', rc=custom_style)
+    elif style == 'courtship_light':
+        # Light variant of the Ruta-lab courtship scheme: white background, black text/axes.
+        custom_style = {
+                    'axes.labelcolor': 'black',
+                    'axes.edgecolor': 'black',
+                    'grid.color': '#cccccc',
+                    'xtick.color': 'black',
+                    'ytick.color': 'black',
+                    'text.color': 'black',
+                    'axes.facecolor': COURTSHIP_LIGHT_BG,
+                    'axes.grid': False,
+                    'figure.facecolor': COURTSHIP_LIGHT_BG,
+                    'savefig.facecolor': COURTSHIP_LIGHT_BG,
+                    'savefig.edgecolor': 'none'}
+        custom_style.update(font_styles)
+        sns.set_style('white', rc=custom_style)
 
     pl.rcParams['savefig.dpi'] = 400
     pl.rcParams['figure.figsize'] = [6,4]
@@ -97,6 +117,18 @@ def set_sns_style(style='dark', min_fontsize=6):
 # Ruta-lab courtship color scheme (projector + triad modules)
 # ──────────────────────────────────────────────────────────────────────────
 COURTSHIP_BG = '#262626'                  # figure/axes background for style='courtship'
+COURTSHIP_LIGHT_BG = '#FFFFFF'            # background for style='courtship_light'
+
+# Foreground/contrast color for the active theme, updated by set_sns_style(): white on the
+# dark themes ('dark', 'courtship'), black on the light ones ('white', 'courtship_light').
+# Plot code that draws guide lines / origin markers / reference text on the background should
+# use fg_color() instead of a hardcoded 'white' so it flips with the theme.
+_CURRENT_FG = 'white'
+
+
+def fg_color():
+    """Foreground/contrast color for the theme set by the last set_sns_style() call."""
+    return _CURRENT_FG
 
 # assay-type colors: species × chamber configuration (MMF = 1 male + 2 females
 # of the focal pair context; MFF as labelled in the triad/projector pipelines)
