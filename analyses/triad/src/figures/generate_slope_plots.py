@@ -26,7 +26,7 @@ from matplotlib import pyplot as plt
 from analyses.triad.src import putil as tputil
 from analyses.triad.src.figures.plotting_helpers import (
     ACTION_COL, FOCAL_FLIES, SEX_MAP, _vel_tag, _vel_label,
-    add_female_target_subcases, load_and_prepare,
+    add_female_target_subcases, load_and_prepare, resolve_rootdir_and_theme,
 )
 import libs.plotting as putil
 
@@ -113,11 +113,10 @@ def _plot_angvel_slope_by_velocity(split_assay_dfs, figdir):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m analyses.triad.src.figures.generate_slope_plots <rootdir>")
-        sys.exit(1)
+    rootdir = resolve_rootdir_and_theme(
+        sys.argv, "Usage: python -m analyses.triad.src.figures.generate_slope_plots <rootdir> [--light]")
 
-    data = load_and_prepare(sys.argv[1])
+    data = load_and_prepare(rootdir)
     if data is None:
         sys.exit(0)
 

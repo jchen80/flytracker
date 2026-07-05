@@ -73,7 +73,7 @@ def plot_action_fraction_across_assays(assay_dfs, action_col,
     sns.stripplot(data=plot_data, x='assay_type', y='fraction',
                   order=assay_order, palette=palette,
                   size=7, jitter=True, ax=ax, alpha=0.9,
-                  linewidth=0.5, edgecolor='white')
+                  linewidth=0.5, edgecolor=putil.fg_color())
 
     n_per_assay = plot_data.groupby('assay_type')['acquisition'].nunique()
     ax.set_xticklabels([f'{a}\n(n={n_per_assay.get(a, 0)})' for a in assay_order])
@@ -161,7 +161,7 @@ def plot_action_rate_across_assays(assay_dfs, action_col, fps=None,
     sns.stripplot(data=plot_data, x='assay_type', y='value',
                   order=assay_order, palette=palette,
                   size=7, jitter=True, ax=ax, alpha=0.9,
-                  linewidth=0.5, edgecolor='white')
+                  linewidth=0.5, edgecolor=putil.fg_color())
 
     n_per_assay = plot_data.groupby('assay_type')['acquisition'].nunique()
     ax.set_xticklabels([f'{a}\n(n={n_per_assay.get(a, 0)})' for a in assay_order])
@@ -269,7 +269,7 @@ def plot_target_sex_fraction_across_assays(assay_dfs, action_col, sex_map,
     sns.stripplot(data=plot_data, x='assay_type', y='fraction', hue='sex',
                   order=assay_order, hue_order=['M', 'F'],
                   palette=sex_palette, size=6, jitter=True, ax=ax, alpha=0.85,
-                  linewidth=0.5, edgecolor='white', dodge=True,
+                  linewidth=0.5, edgecolor=putil.fg_color(), dodge=True,
                   legend=False)
 
     n_per_assay = plot_data.groupby('assay_type')['acquisition'].nunique()

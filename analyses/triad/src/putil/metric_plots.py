@@ -658,7 +658,7 @@ def plot_metric_by_assay_then_velocity_bin(
 
     fig, ax = plt.subplots(figsize=figsize)
 
-    palette = [bin_colors.get(bl, 'white') for bl in bin_order]
+    palette = [bin_colors.get(bl, putil.fg_color()) for bl in bin_order]
     sns.violinplot(
         data=data, x='assay_type', y='value',
         hue='bin',
@@ -991,13 +991,13 @@ def plot_courtship_multiplicity_fraction(assay_dfs, focal_flies_map, triad='MMF'
         base = assay_colors.get(k, putil.courtship_color(k))
         light = putil.lighten(base, 0.45)
         m2 = float(p['frac_2M'].mean())
-        ax.bar(i, m2, width=0.7, color=base, edgecolor='white', lw=0.5, zorder=1,
+        ax.bar(i, m2, width=0.7, color=base, edgecolor=putil.fg_color(), lw=0.5, zorder=1,
                label='2M (both males)' if i == 0 else None)
-        ax.bar(i, 1 - m2, bottom=m2, width=0.7, color=light, edgecolor='white', lw=0.5,
+        ax.bar(i, 1 - m2, bottom=m2, width=0.7, color=light, edgecolor=putil.fg_color(), lw=0.5,
                zorder=1, label='1M (one male)' if i == 0 else None)
         jit = (rng.random(len(p)) - 0.5) * 0.3
         ax.scatter(i + jit, p['frac_2M'], s=30, color='black', alpha=0.75, zorder=3,
-                   edgecolor='white', linewidths=0.3)
+                   edgecolor=putil.fg_color(), linewidths=0.3)
     ax.set_xticks(range(len(keys)))
     ax.set_xticklabels(keys, rotation=20, ha='right')
     ax.set_ylim(0, 1)

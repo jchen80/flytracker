@@ -26,7 +26,7 @@ from analyses.triad.src import data_io
 from analyses.triad.src import util as tutil
 from analyses.triad.src import putil as tputil
 from analyses.triad.src.figures.plotting_helpers import (
-    ACTION_COL, FOCAL_FLIES, SEX_MAP, _save, load_and_prepare,
+    ACTION_COL, FOCAL_FLIES, SEX_MAP, _save, load_and_prepare, resolve_rootdir_and_theme,
 )
 import libs.plotting as putil
 
@@ -196,11 +196,10 @@ def _plot_target_velocity_during_action(combined_df, assay_dfs, figdir, target_c
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m analyses.triad.src.figures.generate_action_timing_plots <rootdir>")
-        sys.exit(1)
+    rootdir = resolve_rootdir_and_theme(
+        sys.argv, "Usage: python -m analyses.triad.src.figures.generate_action_timing_plots <rootdir> [--light]")
 
-    data = load_and_prepare(sys.argv[1])
+    data = load_and_prepare(rootdir)
     if data is None:
         sys.exit(0)
 

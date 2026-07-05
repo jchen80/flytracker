@@ -10,6 +10,7 @@ import re
 import matplotlib.gridspec as gridspec
 from scipy.stats import gaussian_kde, binned_statistic_2d
 import pandas as pd
+import libs.plotting as putil
 import seaborn as sns
 
 
@@ -294,17 +295,17 @@ def _add_focal_fly_marker(ax, ppm, body_length_mm=None, body_width_mm=None):
     the fly's body footprint (major axis along +x, since data is ego-centric with
     focal fly facing right). Otherwise falls back to a dot + heading arrow.
     '''
-    ax.axhline(0, color='white', lw=0.5, alpha=0.3)
-    ax.axvline(0, color='white', lw=0.5, alpha=0.3)
+    ax.axhline(0, color=putil.fg_color(), lw=0.5, alpha=0.3)
+    ax.axvline(0, color=putil.fg_color(), lw=0.5, alpha=0.3)
 
     if body_length_mm is not None and body_width_mm is not None:
         ellipse = Ellipse(xy=(0, 0), width=body_length_mm, height=body_width_mm,
-                          angle=0, facecolor='white', edgecolor='white',
+                          angle=0, facecolor=putil.fg_color(), edgecolor=putil.fg_color(),
                           alpha=0.6, zorder=5)
         ax.add_patch(ellipse)
-        ax.scatter(0, 0, s=30, color='white', zorder=6, marker='o')
+        ax.scatter(0, 0, s=30, color=putil.fg_color(), zorder=6, marker='o')
     else:
         arrow_len = 2 if ppm is not None else 40
-        ax.scatter(0, 0, s=150, color='white', zorder=5, marker='o')
+        ax.scatter(0, 0, s=150, color=putil.fg_color(), zorder=5, marker='o')
         ax.annotate('', xy=(arrow_len, 0), xytext=(0, 0),
-                    arrowprops=dict(arrowstyle='->', color='white', lw=2))
+                    arrowprops=dict(arrowstyle='->', color=putil.fg_color(), lw=2))

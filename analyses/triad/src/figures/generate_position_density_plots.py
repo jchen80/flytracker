@@ -28,7 +28,7 @@ from analyses.triad.src import putil as tputil
 from analyses.triad.src.figures.plotting_helpers import (
     ACTION_COL, FOCAL_FLIES, SEX_MAP, VEL_SOURCES,
     _save, _bin_label, build_velocity_bins, add_female_target_subcases,
-    load_and_prepare,
+    load_and_prepare, resolve_rootdir_and_theme,
 )
 
 
@@ -104,11 +104,10 @@ def _plot_courtship_prob_maps(assay_dfs, figdir):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m analyses.triad.src.figures.generate_position_density_plots <rootdir>")
-        sys.exit(1)
+    rootdir = resolve_rootdir_and_theme(
+        sys.argv, "Usage: python -m analyses.triad.src.figures.generate_position_density_plots <rootdir> [--light]")
 
-    data = load_and_prepare(sys.argv[1])
+    data = load_and_prepare(rootdir)
     if data is None:
         sys.exit(0)
 

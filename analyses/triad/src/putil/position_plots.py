@@ -10,6 +10,7 @@ import re
 import matplotlib.gridspec as gridspec
 from scipy.stats import gaussian_kde
 import pandas as pd
+import libs.plotting as putil
 import seaborn as sns
 
 
@@ -273,7 +274,7 @@ def plot_relative_position_density_across_assays(assay_dfs, ppm_dict,
         ax.set_xlim(lim); ax.set_ylim(lim)
         ax.set_aspect('equal')
         ax.text(0.02, 0.02, f'n={n}', transform=ax.transAxes,
-                color='white', fontsize=7, va='bottom')
+                color=putil.fg_color(), fontsize=7, va='bottom')
         if title:
             ax.set_title(title, fontsize=11)
         if ylabel:
@@ -455,7 +456,7 @@ def plot_relative_position_density_by_velocity_bin_across_assays(
             ax.set_xlim(zoom_lim); ax.set_ylim(zoom_lim)
             ax.set_aspect('equal')
             ax.text(0.02, 0.02, f'n={n}', transform=ax.transAxes,
-                    color='white', fontsize=7, va='bottom')
+                    color=putil.fg_color(), fontsize=7, va='bottom')
             if r == 0:
                 ax.set_title(assay_type, fontsize=11)
             if c == 0:

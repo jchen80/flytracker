@@ -9,6 +9,7 @@ plotting backend.
 """
 
 import os
+import sys
 from collections import namedtuple
 
 import matplotlib
@@ -53,6 +54,21 @@ DIST_BIN_MM = 1.0
 PLOT_STYLE = 'courtship'
 MIN_FONT_SIZE = 12
 putil.set_sns_style(style=PLOT_STYLE, min_fontsize=MIN_FONT_SIZE)
+
+
+def resolve_rootdir_and_theme(argv, usage):
+    """Parse the shared triad-CLI args: a required ``<rootdir>`` plus an optional
+    ``--light`` flag (white background / black text instead of the default dark
+    courtship theme). Applies the theme and returns rootdir; prints ``usage`` and
+    exits if no rootdir was given.
+    """
+    if '--light' in argv[1:]:
+        putil.set_sns_style(style='courtship_light', min_fontsize=MIN_FONT_SIZE)
+    rest = [a for a in argv[1:] if a != '--light']
+    if not rest:
+        print(usage)
+        sys.exit(1)
+    return rest[0]
 
 
 # ── Small helpers ─────────────────────────────────────────────────────────────

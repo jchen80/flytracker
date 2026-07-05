@@ -19,7 +19,7 @@ matplotlib.use('Agg')
 
 from analyses.triad.src import putil as tputil
 from analyses.triad.src.figures.plotting_helpers import (
-    ACTION_COL, _dist_metrics, load_and_prepare,
+    ACTION_COL, _dist_metrics, load_and_prepare, resolve_rootdir_and_theme,
 )
 
 
@@ -35,11 +35,8 @@ def _sample_example_frames(assay_dfs, rootdir, figdir):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m analyses.triad.src.figures.generate_frame_sample_plots <rootdir>")
-        sys.exit(1)
-
-    rootdir = sys.argv[1]
+    rootdir = resolve_rootdir_and_theme(
+        sys.argv, "Usage: python -m analyses.triad.src.figures.generate_frame_sample_plots <rootdir> [--light]")
     data = load_and_prepare(rootdir)
     if data is None:
         sys.exit(0)

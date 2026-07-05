@@ -10,6 +10,7 @@ import re
 import matplotlib.gridspec as gridspec
 from scipy.stats import gaussian_kde
 import pandas as pd
+import libs.plotting as putil
 import seaborn as sns
 
 
@@ -46,7 +47,7 @@ def _plot_bout_signals_on_axes(axes, actor_rows, candidate_ids, id_colors, lookb
 
     for cand_id in candidate_ids:
         cand_rows = actor_rows[actor_rows['_cand_id'] == cand_id].sort_values('frame')
-        color = id_colors.get(cand_id, 'white')
+        color = id_colors.get(cand_id, putil.fg_color())
         t = cand_rows['_t'].values
         label = f'fly {cand_id}'
 
@@ -207,9 +208,9 @@ def _shade_bout_axes(axes, bout_start_t, bout_end_t):
     '''Shade bout region and add reference lines. Used by plotting functions.'''
     for ax in axes:
         ax.axvspan(bout_start_t, bout_end_t, color='#999999', alpha=0.08)
-        ax.axvline(bout_start_t, color='white', lw=1, ls='--', alpha=0.5)
-        ax.axvline(bout_end_t, color='white', lw=1, ls='--', alpha=0.5)
-        ax.axhline(0, color='white', lw=0.5, alpha=0.3)
+        ax.axvline(bout_start_t, color=putil.fg_color(), lw=1, ls='--', alpha=0.5)
+        ax.axvline(bout_end_t, color=putil.fg_color(), lw=1, ls='--', alpha=0.5)
+        ax.axhline(0, color=putil.fg_color(), lw=0.5, alpha=0.3)
 
 
 def _bout_title(acq, action_col, bout_num, actor_id, bout_start, bout_end, fps):

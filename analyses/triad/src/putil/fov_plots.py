@@ -194,9 +194,9 @@ def plot_target_theta_joint_density_across_assays(assay_dfs, focal_flies_map=Non
         h, xe, ye, n = grids[key]
         im = ax.imshow(h.T, origin='lower', aspect='equal',
                        cmap=cmap, extent=[xe[0], xe[-1], ye[0], ye[-1]], vmin=0, vmax=vmax)
-        ax.axhline(0, color='white', lw=0.5, alpha=0.4)
-        ax.axvline(0, color='white', lw=0.5, alpha=0.4)
-        ax.plot([-lim, lim], [-lim, lim], color='white', lw=0.6, alpha=0.35, ls='--')
+        ax.axhline(0, color=putil.fg_color(), lw=0.5, alpha=0.4)
+        ax.axvline(0, color=putil.fg_color(), lw=0.5, alpha=0.4)
+        ax.plot([-lim, lim], [-lim, lim], color=putil.fg_color(), lw=0.6, alpha=0.35, ls='--')
         ax.set_xlim(x_lim); ax.set_ylim(y_lim)
         _set_theta_ticks(ax, lim)
         ax.set_title(f'{key}\n(n={n})', fontsize=10)
@@ -266,9 +266,9 @@ def plot_target_courtship_prob_maps(assay_dfs, sex_map, focal_flies_map=None,
             im = ax.imshow(np.ma.masked_invalid(g.T), origin='lower', aspect='equal',
                            cmap=cmap, extent=[xe[0], xe[-1], ye[0], ye[-1]],
                            vmin=0, vmax=vmax)
-            ax.axhline(0, color='white', lw=0.4, alpha=0.3)
-            ax.axvline(0, color='white', lw=0.4, alpha=0.3)
-            ax.plot([-lim, lim], [-lim, lim], color='white', lw=0.5, alpha=0.25, ls='--')
+            ax.axhline(0, color=putil.fg_color(), lw=0.4, alpha=0.3)
+            ax.axvline(0, color=putil.fg_color(), lw=0.4, alpha=0.3)
+            ax.plot([-lim, lim], [-lim, lim], color=putil.fg_color(), lw=0.5, alpha=0.25, ls='--')
             ax.set_xlim(x_lim); ax.set_ylim(y_lim)
             _set_theta_ticks(ax, lim)
             if i == 0:
@@ -349,9 +349,9 @@ def plot_target_switch_points(assay_dfs, sex_map, focal_flies_map=None, triad='M
                 n_ev = len(sub)
                 ax.scatter(sub['theta_x_deg'], sub['theta_y_deg'], s=28, color=pt_color,
                            edgecolor='black', linewidths=0.4, alpha=0.9, zorder=3)
-            ax.axhline(0, color='white', lw=0.4, alpha=0.3)
-            ax.axvline(0, color='white', lw=0.4, alpha=0.3)
-            ax.plot([-lim, lim], [-lim, lim], color='white', lw=0.5, alpha=0.25, ls='--')
+            ax.axhline(0, color=putil.fg_color(), lw=0.4, alpha=0.3)
+            ax.axvline(0, color=putil.fg_color(), lw=0.4, alpha=0.3)
+            ax.plot([-lim, lim], [-lim, lim], color=putil.fg_color(), lw=0.5, alpha=0.25, ls='--')
             ax.set_xlim(x_lim); ax.set_ylim(y_lim)
             _set_theta_ticks(ax, lim)
             if i == 0:
@@ -361,7 +361,7 @@ def plot_target_switch_points(assay_dfs, sex_map, focal_flies_map=None, triad='M
             if j == 0:
                 ax.set_ylabel(f'switches → {row_lbl[i]}\nθ to target y (deg)')
             ax.text(0.03, 0.97, f'n={n_ev}', transform=ax.transAxes, va='top', ha='left',
-                    color='white', fontsize=8)
+                    color=putil.fg_color(), fontsize=8)
     fig.suptitle(f'{triad}: manually-annotated switch locations in the target θ–θ space',
                  fontsize=13)
 

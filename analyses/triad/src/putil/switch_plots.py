@@ -139,7 +139,7 @@ def plot_switch_case_counts_across_assays(classified_df, threshold_deg=15.0,
             heights = raw
         bars = ax.bar(x + (i - (n_cases - 1) / 2) * width, heights, width,
                       color=case_colors.get(case, 'gray'),
-                      label=case_labels.get(case, case), edgecolor='white')
+                      label=case_labels.get(case, case), edgecolor=putil.fg_color())
         for b, r in zip(bars, raw):
             ax.text(b.get_x() + b.get_width() / 2, b.get_height(), str(r),
                     ha='center', va='bottom', fontsize=8)
@@ -235,7 +235,7 @@ def plot_switch_vectors_across_assays(vector_dfs, ppm_dict,
                     color='gray', lw=0.5, alpha=0.3, ls='--', zorder=0)
             ax.text(0, r_ring, f'{r_ring:.0f}', fontsize=7, color='gray',
                     ha='center', va='bottom', alpha=0.6)
-        ax.scatter(0, 0, s=60, color='white', zorder=7, marker='o',
+        ax.scatter(0, 0, s=60, color=putil.fg_color(), zorder=7, marker='o',
                    linewidths=0.8, edgecolors='gray')
         ax.set_xlim(-global_plot_r, global_plot_r)
         ax.set_ylim(-global_plot_r, global_plot_r)
@@ -427,7 +427,7 @@ def plot_switch_rate_across_assays(assay_dfs, action_col='courtship', fps=60,
                 order=assay_order, palette=palette, errorbar='se', ax=ax, alpha=0.7)
     sns.stripplot(data=plot_data, x='assay_type', y='value',
                   order=assay_order, palette=palette, size=7, jitter=True,
-                  ax=ax, alpha=0.9, linewidth=0.5, edgecolor='white')
+                  ax=ax, alpha=0.9, linewidth=0.5, edgecolor=putil.fg_color())
 
     n_per = plot_data.groupby('assay_type')['acquisition'].nunique()
     sw_per = plot_data.groupby('assay_type')['n_switches'].sum()
@@ -616,8 +616,8 @@ def plot_switch_trajectory_across_assays(traj_dfs, ppm_dict,
                                 color=c, alpha=0.2)
                 plotted = True
             if plotted:
-                ax.axhline(0, color='white', ls='--', lw=0.8, alpha=0.6)
-                ax.axvline(0, color='white', ls='--', lw=0.8, alpha=0.5)
+                ax.axhline(0, color=putil.fg_color(), ls='--', lw=0.8, alpha=0.6)
+                ax.axvline(0, color=putil.fg_color(), ls='--', lw=0.8, alpha=0.5)
             ax.set_xlabel('time from switch (s)')
             ax.set_ylabel(ylabel if col_idx == 0 else '')
             ax.set_title(f'{assay_type}  ({_count_label(n_events, n_acq)})')
@@ -682,7 +682,7 @@ def plot_switch_trajectory_across_assays(traj_dfs, ppm_dict,
                          color='gray', lw=0.5, alpha=0.3, ls='--', zorder=0)
             ax_cart.text(0, r_ring, f'{r_ring:.0f}', fontsize=7, color='gray',
                          ha='center', va='bottom', alpha=0.6)
-        ax_cart.scatter(0, 0, s=60, color='white', zorder=7, marker='o',
+        ax_cart.scatter(0, 0, s=60, color=putil.fg_color(), zorder=7, marker='o',
                         linewidths=0.8, edgecolors='gray')
         ax_cart.set_xlim(-global_plot_r, global_plot_r)
         ax_cart.set_ylim(-global_plot_r, global_plot_r)
@@ -781,7 +781,7 @@ def plot_switch_theta_error_delta_across_assays(switch_comparison_dfs, assay_col
             legend_handles.append(Patch(facecolor=color, edgecolor=color,
                                         label=label))
 
-    ax.axvline(0, color='white', linestyle='--', linewidth=1.0, alpha=0.7)
+    ax.axvline(0, color=putil.fg_color(), linestyle='--', linewidth=1.0, alpha=0.7)
     ax.set_xlabel('new − old  |θ error|  (deg)')
     ax.set_ylabel('density')
     ax.set_title('Δ |θ error| at switch')
@@ -892,7 +892,7 @@ def plot_switch_target_ang_vel_fov_delta_across_assays(
             legend_handles.append(Patch(facecolor=color, edgecolor=color,
                                         label=label))
 
-    ax.axvline(0, color='white', linestyle='--', linewidth=1.0, alpha=0.7)
+    ax.axvline(0, color=putil.fg_color(), linestyle='--', linewidth=1.0, alpha=0.7)
     ax.set_xlabel('new − old  signed target ang. vel. in FOV  (°/s; + prog / − reg)')
     ax.set_ylabel('density')
     ax.set_title('Δ signed target ang. vel. in FOV at switch')
@@ -929,7 +929,7 @@ def plot_switch_target_ang_vel_fov_delta_across_assays(
             ax.plot([0, 1], [old_mean, new_mean], color=color, linewidth=2.5, zorder=5)
             ax.scatter([0, 1], [old_mean, new_mean], color=color, s=60, zorder=6)
 
-        ax.axhline(0, color='white', ls='--', lw=0.6, alpha=0.5)
+        ax.axhline(0, color=putil.fg_color(), ls='--', lw=0.6, alpha=0.5)
         ax.set_xticks([0, 1])
         ax.set_xticklabels(['old target', 'new target'])
         ax.set_xlim(-0.4, 1.4)
@@ -1004,7 +1004,7 @@ def plot_switch_delta_metrics_for_case(case_df, metrics, assay_colors=None,
             ax.axvline(float(v.mean()), color=c, linewidth=1.2, linestyle=':', alpha=0.8)
             handles.append(Patch(facecolor=c, edgecolor=c,
                                  label=f'{a} (n={len(v)}, μ={v.mean():.2g})'))
-        ax.axvline(0, color='white', linestyle='--', linewidth=1.0, alpha=0.7)
+        ax.axvline(0, color=putil.fg_color(), linestyle='--', linewidth=1.0, alpha=0.7)
         ax.set_xlim(-lim, lim)
         ax.set_xlabel(f'new − old  {label}')
         ax.set_ylabel('density')
@@ -1180,12 +1180,12 @@ def plot_switch_target_ang_vel_fov_vs_theta_error_across_assays(
                     lr = linregress(x, y)
                     xs = np.array([-xlim, xlim])
                     ax.plot(xs, lr.slope * xs + lr.intercept,
-                            color='white', lw=1.8, zorder=4)
+                            color=putil.fg_color(), lw=1.8, zorder=4)
                     ax.text(0.03, 0.97,
                             f'slope={lr.slope:.2f}\nr={lr.rvalue:.2f}\n'
                             f'p={lr.pvalue:.2g}\nn={len(x)}',
                             transform=ax.transAxes, va='top', ha='left', fontsize=7,
-                            color='white',
+                            color=putil.fg_color(),
                             bbox=dict(boxstyle='round,pad=0.2', fc='black',
                                       ec='gray', alpha=0.6))
 
@@ -1358,7 +1358,7 @@ def plot_switch_positions_colored_by_metric_across_assays(
                     color='gray', lw=0.5, alpha=0.3, ls='--', zorder=0)
             ax.text(0, r_ring, f'{r_ring:.0f}', fontsize=7, color='gray',
                     ha='center', va='bottom', alpha=0.6)
-        ax.scatter(0, 0, s=60, color='white', zorder=7, marker='o',
+        ax.scatter(0, 0, s=60, color=putil.fg_color(), zorder=7, marker='o',
                    linewidths=0.8, edgecolors='gray')
         ax.set_xlim(-global_plot_r, global_plot_r)
         ax.set_ylim(-global_plot_r, global_plot_r)
@@ -1441,7 +1441,7 @@ def plot_switch_positions_colored_by_metric_across_assays(
 
         # Row 1: old positions colored by old_color_col
         ax1.scatter(sf['_ox'], sf['_oy'],
-                    c=c_old if c_old is not None else 'white',
+                    c=c_old if c_old is not None else putil.fg_color(),
                     cmap=cmap if c_old is not None else None,
                     vmin=-vlim, vmax=vlim, s=18, alpha=0.75, linewidths=0,
                     marker='s', zorder=2)
@@ -1450,7 +1450,7 @@ def plot_switch_positions_colored_by_metric_across_assays(
 
         # Row 2: new positions colored by new_color_col
         sc2 = ax2.scatter(sf['_nx'], sf['_ny'],
-                          c=c_new if c_new is not None else 'white',
+                          c=c_new if c_new is not None else putil.fg_color(),
                           cmap=cmap if c_new is not None else None,
                           vmin=-vlim, vmax=vlim, s=18, alpha=0.75, linewidths=0,
                           marker='o', zorder=2)
@@ -1613,9 +1613,9 @@ def plot_switch_target_tail_colored_by_metric_across_assays(
                 lc.set_array(c[:-1])
                 ax.add_collection(lc)
             last_sc = ax.scatter(x[-1], y[-1], c=[c[-1]], cmap=cmap, norm=mnorm,
-                                 s=endpoint_size, marker=marker, edgecolors='white',
+                                 s=endpoint_size, marker=marker, edgecolors=putil.fg_color(),
                                  linewidths=0.5, zorder=4)
-        ax.scatter(0, 0, s=60, color='white', edgecolors='gray', linewidths=0.8,
+        ax.scatter(0, 0, s=60, color=putil.fg_color(), edgecolors='gray', linewidths=0.8,
                    marker='o', zorder=6)
         _style_ego_ax(ax, global_plot_r)
 
@@ -1698,7 +1698,7 @@ def _draw_track(ax, x_mm, y_mm, ori, t, base_color, norm, sub, sw_idx,
 
     # time-gradient circles
     ax.scatter(x_mm[sub], y_mm[sub], c=colors, s=circle_size, marker='o',
-               edgecolors='white', linewidths=0.4, zorder=4, label=label)
+               edgecolors=putil.fg_color(), linewidths=0.4, zorder=4, label=label)
 
     # ring the switch-frame marker
     ax.scatter(x_mm[sw_idx], y_mm[sw_idx], s=circle_size * 3.4, facecolors='none',
@@ -1796,9 +1796,9 @@ def plot_single_switch_target_trajectory(ax, event_df, ppm, frame='ego',
 
     if frame == 'ego':
         # focal fly at origin, heading +x
-        ax.scatter(0, 0, s=70, color='white', edgecolors='gray', linewidths=0.8,
+        ax.scatter(0, 0, s=70, color=putil.fg_color(), edgecolors='gray', linewidths=0.8,
                    marker='o', zorder=6)
-        ax.quiver(0, 0, arrow_mm, 0, color='white', angles='xy',
+        ax.quiver(0, 0, arrow_mm, 0, color=putil.fg_color(), angles='xy',
                   scale_units='xy', scale=1, width=0.012, headwidth=3,
                   headlength=4, zorder=6, alpha=0.8)
         if plot_r is None:
@@ -1933,7 +1933,7 @@ def plot_single_switch_target_metric(ax, event_df, ppm, frame='ego',
 
     # focal fly — solid color, no gradient
     if frame == 'ego':
-        ax.scatter(0, 0, s=70, color=focal_color, edgecolors='white',
+        ax.scatter(0, 0, s=70, color=focal_color, edgecolors=putil.fg_color(),
                    linewidths=0.6, zorder=6, label='focal')
         ax.quiver(0, 0, arrow_mm, 0, color=focal_color, angles='xy',
                   scale_units='xy', scale=1, width=0.012, headwidth=3,
@@ -1953,7 +1953,7 @@ def plot_single_switch_target_metric(ax, event_df, ppm, frame='ego',
                           angles='xy', scale_units='xy', scale=1, width=0.012,
                           headwidth=3, headlength=4, zorder=3, alpha=0.9)
             ax.scatter(fx[sub], fy[sub], color=focal_color, s=circle_size,
-                       marker='o', edgecolors='white', linewidths=0.4, zorder=4,
+                       marker='o', edgecolors=putil.fg_color(), linewidths=0.4, zorder=4,
                        label='focal')
             ax.scatter(fx[sw_idx], fy[sw_idx], s=circle_size * 3.4, facecolors='none',
                        edgecolors=focal_color, linewidths=3.0, zorder=5)
@@ -1982,7 +1982,7 @@ def plot_single_switch_target_metric(ax, event_df, ppm, frame='ego',
                       angles='xy', scale_units='xy', scale=1, width=0.012,
                       headwidth=3, headlength=4, zorder=3, alpha=0.95)
         sc = ax.scatter(x[sub], y[sub], c=cvals, cmap=cmap, norm=mnorm,
-                        s=circle_size, marker=marker, edgecolors='white',
+                        s=circle_size, marker=marker, edgecolors=putil.fg_color(),
                         linewidths=0.4, zorder=4, label=lbl)
         last_sc = sc
         ring_color = new_color if tag == 'new' else old_color

@@ -10,6 +10,7 @@ import re
 import matplotlib.gridspec as gridspec
 from scipy.stats import gaussian_kde
 import pandas as pd
+import libs.plotting as putil
 import seaborn as sns
 
 
@@ -64,7 +65,7 @@ def plot_roi_overlay(avi_path, trk, calib, frame_idx=0, save_dir=None, acq=None,
         fly_id = int(row['id'])
         px, py = row['pos_x'], row['pos_y']
         ori = row['ori']
-        color = id_colors.get(fly_id, 'white')
+        color = id_colors.get(fly_id, putil.fg_color())
 
         ax.scatter(px, py, s=120, color=color, zorder=5, label=f'Fly {fly_id}')
         ax.annotate('', xy=(px + arrow_len*np.cos(ori), py + arrow_len*np.sin(ori)),
@@ -77,7 +78,7 @@ def plot_roi_overlay(avi_path, trk, calib, frame_idx=0, save_dir=None, acq=None,
         texts.append(t)
 
     adjust_text(texts, ax=ax, expand=(1.5, 1.5),
-                arrowprops=dict(arrowstyle='-', color='white', lw=0.8, alpha=0.6))
+                arrowprops=dict(arrowstyle='-', color=putil.fg_color(), lw=0.8, alpha=0.6))
 
     ax.set_xlim(0, frame_width)
     ax.set_ylim(frame_height, 0)
@@ -248,8 +249,8 @@ def plot_transformation_sanity_check(df, calib, avi_path, frame_idx=None,
                 color=targ_color, fontsize=8,
                 bbox=dict(boxstyle='round,pad=0.2', fc='black', alpha=0.5))
 
-        ax.axhline(0, color='white', lw=0.5, alpha=0.4)
-        ax.axvline(0, color='white', lw=0.5, alpha=0.4)
+        ax.axhline(0, color=putil.fg_color(), lw=0.5, alpha=0.4)
+        ax.axvline(0, color=putil.fg_color(), lw=0.5, alpha=0.4)
         ax.set_xlim(-lim, lim); ax.set_ylim(lim, -lim)
         ax.set_xticks(np.arange(-int(lim), int(lim), 100))
         ax.set_yticks(np.arange(-int(lim), int(lim), 100))

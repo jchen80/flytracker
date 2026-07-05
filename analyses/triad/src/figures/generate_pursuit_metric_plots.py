@@ -23,7 +23,7 @@ from analyses.triad.src import putil as tputil
 from analyses.triad.src.figures.plotting_helpers import (
     ACTION_COL, FOCAL_FLIES, BODY_ADJ_DIST, VEL_SOURCES, DIST_BIN_MM,
     _save, _dist_metrics, _range_tag, _bin_label, build_velocity_bins,
-    load_and_prepare,
+    load_and_prepare, resolve_rootdir_and_theme,
 )
 import libs.plotting as putil
 
@@ -256,11 +256,10 @@ def _plot_dist_theta_relationship(assay_dfs, figdir):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m analyses.triad.src.figures.generate_pursuit_metric_plots <rootdir>")
-        sys.exit(1)
+    rootdir = resolve_rootdir_and_theme(
+        sys.argv, "Usage: python -m analyses.triad.src.figures.generate_pursuit_metric_plots <rootdir> [--light]")
 
-    data = load_and_prepare(sys.argv[1])
+    data = load_and_prepare(rootdir)
     if data is None:
         sys.exit(0)
 
