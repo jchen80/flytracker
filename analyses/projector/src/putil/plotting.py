@@ -104,8 +104,16 @@ def plot_fraction_vs_intensity(df, behaviors=ao.DEFAULT_BEHAVIORS,
     return fig, axes
 
 
-# fly + dot path colors (legible on the dark #262626 background)
-TRACK_COLORS = {'fly': 'white', 'innerdot': '#E8830C', 'outerdot': '#2CA02C'}
+# dot path colors -- legible on either theme's background, so they are fixed.
+# The fly path has no color of its own: it is drawn in the theme foreground
+# (white on the dark #262626 bg, black on courtship_light) via track_color().
+TRACK_COLORS = {'innerdot': '#E8830C', 'outerdot': '#2CA02C'}
+
+
+def track_color(track):
+    """Path color for 'fly' / 'innerdot' / 'outerdot'. The fly follows the active
+    theme (see putil.fg_color()); the dots are the same on both themes."""
+    return putil.fg_color() if track == 'fly' else TRACK_COLORS[track]
 
 
 def plot_assay_trajectories(df, species=None, direction=None, use_mm=True,
@@ -183,7 +191,7 @@ def plot_assay_trajectories(df, species=None, direction=None, use_mm=True,
                 # stimulus rotation reads as commanded (ccw) and matches the switch
                 # ego-plots. (This is a vertical flip of the raw camera view.)
                 y = -np.insert(cell[f'{t}_y{suffix}'].to_numpy().astype(float), breaks, np.nan)
-                ax.plot(x, y, color=TRACK_COLORS[t], lw=0.5, alpha=0.8)
+                ax.plot(x, y, color=track_color(t), lw=0.5, alpha=0.8)
             ax.set_aspect('equal')
             ax.set_xticks([]); ax.set_yticks([])
             if i == 0:
@@ -196,7 +204,7 @@ def plot_assay_trajectories(df, species=None, direction=None, use_mm=True,
         title += f' — {direction} direction'
     if chasing_only:
         title += f' — courting [TEMP: chasing, ≤{bridge_gap_sec:g}s gaps bridged]'
-    fig.suptitle(f'{title}  (fly={TRACK_COLORS["fly"]}, '
+    fig.suptitle(f'{title}  (fly={track_color("fly")}, '
                  f'inner={TRACK_COLORS["innerdot"]}, outer={TRACK_COLORS["outerdot"]}; {unit})',
                  fontsize=11)
     fig.tight_layout()

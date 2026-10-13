@@ -234,7 +234,7 @@ def plot_switch_points_by_motion(tbl, sw, mode='aggregate', lim=LIM, n_grid=50,
                     if j == 0:
                         ax.set_ylabel(f'{rlab}\nθ to outer dot (deg)')
                     ax.text(0.03, 0.97, f'n={n_ev}', transform=ax.transAxes, va='top',
-                            ha='left', color='black', fontsize=8)
+                            ha='left', color=putil.fg_color(), fontsize=8)
             if sc is not None:
                 fig.colorbar(sc, ax=axes.ravel().tolist(), fraction=0.025, pad=0.02, label=cbar)
             fig.suptitle(_suptitle(f'Switch locations colored by {desc}', sp), fontsize=13)
@@ -277,7 +277,7 @@ def plot_switch_points_by_angvel(tbl, sw, mode='aggregate', lim=LIM, n_grid=50,
             ax.set_title(f'{lab}', fontsize=10)
             ax.set_xlabel('θ to inner dot (deg)')
             ax.text(0.03, 0.97, f'n={n_ev}', transform=ax.transAxes, va='top', ha='left',
-                    color='black', fontsize=8)
+                    color=putil.fg_color(), fontsize=8)
         axes[0][0].set_ylabel('θ to outer dot (deg)')
         if sc is not None:
             fig.colorbar(sc, ax=axes.ravel().tolist(), fraction=0.025, pad=0.02,
@@ -473,7 +473,7 @@ def plot_switch_modes_oldnew(tbl, sw, color_by='species', min_frac=0.02, dist_pc
                       & (s_all['new_dot'] == nd)]
             ax.axhline(0, color='0.85', lw=0.4, zorder=0)
             ax.axvline(0, color='0.85', lw=0.4, zorder=0)
-            ax.scatter(0, 0, s=55, color='white', edgecolor='0.4', linewidths=0.8, zorder=6)
+            ax.scatter(0, 0, s=55, color=putil.fg_color(), edgecolor='0.4', linewidths=0.8, zorder=6)
             ax.annotate('', xy=(0.17 * lim, 0), xytext=(0, 0), zorder=6,
                         arrowprops=dict(arrowstyle='->', color='0.4', lw=1.2))
             if not g.empty:
@@ -942,22 +942,23 @@ def plot_mode_example_frames(df, assay_type_dir, n_examples=3, tail_sec=1.0, mar
                         if dx.size:
                             ax.scatter(dx[0], dy[0], s=14, facecolor='none', edgecolor=col,
                                        linewidths=1.0, zorder=4)              # tail start
-                            ax.scatter(dx[-1], dy[-1], s=55, color=col, edgecolor='white',
+                            ax.scatter(dx[-1], dy[-1], s=55, color=col, edgecolor=putil.fg_color(),
                                        linewidths=0.6, zorder=5)              # now
                     fr = w.iloc[-1]
                     fx, fy, th = fr['fly_x'], fr['fly_y'], fr.get('fly_theta', np.nan)
                     if np.isfinite(fx) and np.isfinite(fy):
-                        ax.scatter(fx, fy, s=30, color='white', edgecolor='black',
+                        ax.scatter(fx, fy, s=30, color=putil.fg_color(),
+                                   edgecolor=plt.rcParams['axes.facecolor'],
                                    linewidths=0.6, zorder=6)
                         if np.isfinite(th):
                             L = 0.06 * max(x1 - x0, y1 - y0)
                             ax.annotate('', xy=(fx + L * np.cos(th), fy + L * np.sin(th)),
                                         xytext=(fx, fy), zorder=6,
-                                        arrowprops=dict(arrowstyle='->', color='white', lw=1.4))
+                                        arrowprops=dict(arrowstyle='->', color=putil.fg_color(), lw=1.4))
                     ax.set_xlim(x0, x1); ax.set_ylim(y1, y0)   # image y-down
                     ax.text(0.03, 0.97, f'{row["led_intensity"]:g}%  fr{f0}',
                             transform=ax.transAxes, va='top', ha='left', fontsize=6.5,
-                            color='white')
+                            color=putil.fg_color())
                 ax.set_aspect('equal')
                 if c == 0:
                     ax.set_ylabel(f'{_MODE_SHORT[m]}\n{_POS_LABELS[m // 4]}', fontsize=6.5)
@@ -1347,8 +1348,9 @@ def plot_switch_vectors_by_motion(df, groupby=('species',), window_sec=0.5,
             nys = [d[3] for d in data[label]]
             vals = [d[4] for d in data[label]]
             sc = ax.scatter(nxs, nys, c=vals, cmap=cmap, norm=norm, marker='o', s=90,
-                            edgecolors='white', linewidths=0.5, zorder=3)
-        ax.scatter(0, 0, s=90, color='white', marker='o', edgecolors='gray', linewidths=0.8, zorder=5)
+                            edgecolors=putil.fg_color(), linewidths=0.5, zorder=3)
+        ax.scatter(0, 0, s=90, color=putil.fg_color(), marker='o', edgecolors='gray',
+                   linewidths=0.8, zorder=5)
         ax.axhline(0, color='gray', lw=0.4, alpha=0.25)
         ax.axvline(0, color='gray', lw=0.4, alpha=0.25)
         ax.set_aspect('equal')
@@ -1700,7 +1702,7 @@ def plot_switch_peri_timecourse(df, yvar='theta_error', window_sec=4.0, groupby=
             ax.fill_between(agg['t'], agg['m'] - agg['se'], agg['m'] + agg['se'],
                             color=color, alpha=0.25, lw=0, zorder=2)
             ax.plot(agg['t'], agg['m'], color=color, lw=2, label=name, zorder=3)
-        ax.axvline(0, color='white', ls='--', lw=0.8, alpha=0.5)
+        ax.axvline(0, color=putil.fg_color(), ls='--', lw=0.8, alpha=0.5)
         ax.set_title(f'{label} (n={n_ev})')
         ax.set_xlabel('time from switch (s)')
         if j == 0:
